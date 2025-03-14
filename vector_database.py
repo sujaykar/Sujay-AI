@@ -8,8 +8,8 @@ import os
 from typing import List, Dict, Any
 import chromadb
 from chromadb.config import Settings
-from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain.schema import Document
 
 class VectorDatabase:
