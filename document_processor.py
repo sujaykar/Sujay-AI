@@ -10,14 +10,14 @@ import tempfile
 from PIL import Image
 import pytesseract
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import (
+from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
     UnstructuredMarkdownLoader,
     UnstructuredImageLoader,
     CSVLoader
 )
-from langchain.document_loaders.excel import UnstructuredExcelLoader
+from langchain_community.document_loaders.excel import UnstructuredExcelLoader
 from langchain.schema import Document
 
 class DocumentProcessor:
