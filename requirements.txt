@@ -12,4 +12,5 @@ pandas>=2.0.3
 plotly>=5.16.0
 sentence-transformers>=2.2.2
 python-magic>=0.4.27
-unstructured>=0.10.16
+unstructured==0.10.30
+pytesseract==0.3.10
