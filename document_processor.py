@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import os
 from typing import List, Dict, Any
 import tempfile
@@ -59,7 +56,7 @@ class DocumentProcessor:
         documents = loader.load()
         return self.text_splitter.split_documents(documents)
     
-   def _process_image(self, file_path: str) -> List[Document]:
+    def _process_image(self, file_path: str) -> List[Document]:
         try:
             image = Image.open(file_path)
             text = pytesseract.image_to_string(image)
@@ -73,7 +70,7 @@ class DocumentProcessor:
                 metadata={"source": file_path}
             )]
             return documents
-            
+    
     def _process_markdown(self, file_path: str) -> List[Document]:
         loader = UnstructuredMarkdownLoader(file_path)
         documents = loader.load()
@@ -103,10 +100,3 @@ class DocumentProcessor:
         os.unlink(temp_path)
         
         return documents
-
-
-# In[ ]:
-
-
-
-
