@@ -60,20 +60,20 @@ class DocumentProcessor:
         return self.text_splitter.split_documents(documents)
     
    def _process_image(self, file_path: str) -> List[Document]:
-    try:
-        image = Image.open(file_path)
-        text = pytesseract.image_to_string(image)
-        documents = [Document(page_content=text, metadata={"source": file_path})]
-        return self.text_splitter.split_documents(documents)
-    except Exception as e:
-        print(f"Error processing image with OCR: {str(e)}")
-        # Return minimal document with error info
-        documents = [Document(
-            page_content=f"[Image processing error: {str(e)}]", 
-            metadata={"source": file_path}
-        )]
-        return documents
-    
+        try:
+            image = Image.open(file_path)
+            text = pytesseract.image_to_string(image)
+            documents = [Document(page_content=text, metadata={"source": file_path})]
+            return self.text_splitter.split_documents(documents)
+        except Exception as e:
+            print(f"Error processing image with OCR: {str(e)}")
+            # Return minimal document with error info
+            documents = [Document(
+                page_content=f"[Image processing error: {str(e)}]", 
+                metadata={"source": file_path}
+            )]
+            return documents
+            
     def _process_markdown(self, file_path: str) -> List[Document]:
         loader = UnstructuredMarkdownLoader(file_path)
         documents = loader.load()
