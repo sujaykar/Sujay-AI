@@ -14,7 +14,6 @@ from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
     UnstructuredMarkdownLoader,
-    UnstructuredImageLoader,
     CSVLoader
 )
 from langchain_community.document_loaders.excel import UnstructuredExcelLoader
