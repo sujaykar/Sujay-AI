@@ -60,19 +60,22 @@ class DocumentProcessor:
         documents = loader.load()
         return self.text_splitter.split_documents(documents)
     
-    def _process_image(self, file_path: str) -> List[Document]:
-        # For images containing text, we'll use OCR
-        try:
-            # First try using UnstructuredImageLoader
-            loader = UnstructuredImageLoader(file_path)
-            documents = loader.load()
-        except:
-            # Fallback to manual OCR if UnstructuredImageLoader fails
-            image = Image.open(file_path)
-            text = pytesseract.image_to_string(image)
-            documents = [Document(page_content=text, metadata={"source": file_path})]
-        
+   def _process_image(self, file_path: str) -> List[Document]:
+    """Process image using only pytesseract for OCR"""
+    try:
+        # Use pytesseract directly for OCR
+        image = Image.open(file_path)
+        text = pytesseract.image_to_string(image)
+        documents = [Document(page_content=text, metadata={"source": file_path})]
         return self.text_splitter.split_documents(documents)
+    except Exception as e:
+        print(f"Error processing image with OCR: {str(e)}")
+        # Return minimal document with error info
+        documents = [Document(
+            page_content=f"[Image processing error: {str(e)}]", 
+            metadata={"source": file_path}
+        )]
+        return documents
     
     def _process_markdown(self, file_path: str) -> List[Document]:
         loader = UnstructuredMarkdownLoader(file_path)
