@@ -60,9 +60,7 @@ class DocumentProcessor:
         return self.text_splitter.split_documents(documents)
     
    def _process_image(self, file_path: str) -> List[Document]:
-    """Process image using only pytesseract for OCR"""
     try:
-        # Use pytesseract directly for OCR
         image = Image.open(file_path)
         text = pytesseract.image_to_string(image)
         documents = [Document(page_content=text, metadata={"source": file_path})]
