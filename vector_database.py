@@ -1,95 +1,74 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 import os
-from typing import List, Dict, Any
-import chromadb
+from typing import List
 from langchain.schema import Document
-import pydantic
-import pydantic_settings
-pydantic.BaseSettings = pydantic_settings.BaseSettings  # Redirect import
-import chromadb
-from chromadb.config import Settings
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+from langchain.vectorstores import Qdrant
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
+
 
 class VectorDatabase:
     def __init__(self, persist_directory: str = "db", embedding_model: str = "openai"):
-        """Initialize the vector database.
-        
+        """Initialize the Qdrant vector database.
+
         Args:
             persist_directory: Directory to persist the database
             embedding_model: 'openai' or 'huggingface'
         """
         self.persist_directory = persist_directory
-        
+
         # Create the directory if it doesn't exist
         os.makedirs(persist_directory, exist_ok=True)
-        
+
         # Initialize the embedding model
         if embedding_model == "openai":
             self.embeddings = OpenAIEmbeddings()
         else:
-            # Use a free HuggingFace model as a fallback
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="sentence-transformers/all-MiniLM-L6-v2"
             )
-        
-        # Initialize the vector store
-        self.vectorstore = Chroma(
-            persist_directory=persist_directory,
-            embedding_function=self.embeddings
-        )
-    
+
+        # Initialize the Qdrant client (using in-memory storage or persistent storage)
+        self.client = QdrantClient(path=f"{persist_directory}/qdrant.db")  # Local file storage
+
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Add documents to the vector database."""
-        # Create a new collection for the documents
-        vectorstore = Chroma.from_documents(
-            documents=documents,
-            embedding=self.embeddings,
-            persist_directory=self.persist_directory,
-            collection_name=collection_name
+        # Convert documents to embeddings
+        texts = [doc.page_content for doc in documents]
+        vectors = self.embeddings.embed_documents(texts)
+
+        # Ensure collection exists
+        self.client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=len(vectors[0]), distance=Distance.COSINE),
         )
-        vectorstore.persist()
-    
+
+        # Upload embeddings to Qdrant
+        points = [{"id": i, "vector": vec, "payload": {"text": texts[i]}} for i, vec in enumerate(vectors)]
+        self.client.upsert(collection_name=collection_name, points=points)
+
     def search(self, query: str, k: int = 5, collection_name: str = "default") -> List[Document]:
         """Search for documents similar to the query."""
-        # Create a new ChromaDB client
-        client = chromadb.PersistentClient(path=self.persist_directory)
-        
-        # Get the collection
-        try:
-            collection = client.get_collection(name=collection_name)
-        except ValueError:
-            # If the collection doesn't exist, return an empty list
-            return []
-        
+        # Convert query into vector embedding
+        query_vector = self.embeddings.embed_query(query)
+
         # Perform the search
-        vectorstore = Chroma(
-            client=client,
+        search_results = self.client.search(
             collection_name=collection_name,
-            embedding_function=self.embeddings
+            query_vector=query_vector,
+            limit=k,
         )
-        
-        results = vectorstore.similarity_search(query, k=k)
-        return results
-    
+
+        # Return matched documents
+        return [Document(page_content=hit.payload["text"]) for hit in search_results]
+
     def list_collections(self) -> List[str]:
         """List all collections in the database."""
-        client = chromadb.PersistentClient(path=self.persist_directory)
-        collections = client.list_collections()
-        return [collection.name for collection in collections]
-    
+        return [collection.name for collection in self.client.get_collections().collections]
+
     def delete_collection(self, collection_name: str) -> None:
         """Delete a collection from the database."""
-        client = chromadb.PersistentClient(path=self.persist_directory)
-        client.delete_collection(name=collection_name)
-
-
-# In[ ]:
-
-
-
-
+        self.client.delete_collection(collection_name=collection_name)
