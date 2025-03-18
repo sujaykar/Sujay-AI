@@ -31,8 +31,8 @@ class VectorDatabase:
                 model_name="sentence-transformers/all-MiniLM-L6-v2"
             )
 
-        # Initialize the Qdrant client (using in-memory storage or persistent storage)
-        self.client = QdrantClient(path=f"{persist_directory}/qdrant.db")  # Local file storage
+        # ✅ Connect to the Qdrant server (using Qdrant Cloud or local server)
+        self.client = QdrantClient(url="http://localhost:6333")  # Connect to the Qdrant server
 
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Add documents to the vector database."""
