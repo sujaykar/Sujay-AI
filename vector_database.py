@@ -32,7 +32,7 @@ class VectorDatabase:
             )
 
         # ✅ Connect to the Qdrant server (using Qdrant Cloud or local server)
-        self.client = QdrantClient(url="http://127.0.0.1:6333/")  # Connect to the Qdrant server
+        self.client = QdrantClient(url="https://47c854a3-0bc2-4180-978d-b289cdc0b857.us-west-1-0.aws.cloud.qdrant.io",api_key=QDRANT_API_KEY)  # Connect to the Qdrant server
 
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Add documents to the vector database."""
