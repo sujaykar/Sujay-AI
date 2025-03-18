@@ -3,7 +3,6 @@ langchain-community>=0.3.19,<0.4
 langchain-core>=0.3.0,<0.4
 streamlit>=1.22.0
 openai>=>=1.6.1
-langchain-openai==0.1.1
 chromadb==0.3.21
 pypdf>=3.16.2
 pillow>=9.5.0
