@@ -3,16 +3,18 @@
 
 # In[1]:
 
-import sys
-
-sys.modules["pydantic.BaseSettings"] = sys.modules["pydantic_settings"]
 import os
 from typing import List, Dict, Any
 import chromadb
+from langchain.schema import Document
+try:
+    from pydantic_settings import BaseSettings  # Correct import for Pydantic v2
+except ImportError:
+    from pydantic import BaseSettings  # Fallback for Pydantic v1
+
 from chromadb.config import Settings
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain.schema import Document
 
 class VectorDatabase:
     def __init__(self, persist_directory: str = "db", embedding_model: str = "openai"):
