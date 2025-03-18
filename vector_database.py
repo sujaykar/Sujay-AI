@@ -7,11 +7,10 @@ import os
 from typing import List, Dict, Any
 import chromadb
 from langchain.schema import Document
-try:
-    from pydantic_settings import BaseSettings  # Correct import for Pydantic v2
-except ImportError:
-    from pydantic import BaseSettings  # Fallback for Pydantic v1
-
+import pydantic
+import pydantic_settings
+pydantic.BaseSettings = pydantic_settings.BaseSettings  # Redirect import
+import chromadb
 from chromadb.config import Settings
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
