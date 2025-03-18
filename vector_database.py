@@ -3,7 +3,9 @@
 
 # In[1]:
 
+import sys
 
+sys.modules["pydantic.BaseSettings"] = sys.modules["pydantic_settings"]
 import os
 from typing import List, Dict, Any
 import chromadb
