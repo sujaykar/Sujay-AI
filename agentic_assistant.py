@@ -10,7 +10,7 @@ from langchain.chat_models import ChatOpenAI
 from langchain.schema import Document
 from langchain.agents import initialize_agent, Tool
 from langchain.agents import AgentType
-from langchain_community.chains import RetrievalQA
+from langchain.chains import RetrievalQA
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
