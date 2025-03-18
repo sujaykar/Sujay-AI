@@ -32,8 +32,13 @@ class VectorDatabase:
             )
 
         # ✅ Connect to the Qdrant server (using Qdrant Cloud or local server)
-        self.client = QdrantClient(url="https://47c854a3-0bc2-4180-978d-b289cdc0b857.us-west-1-0.aws.cloud.qdrant.io",api_key="QDRANT_API_KEY")  # Connect to the Qdrant server
+       
+        QDRANT_URL = st.secrets["qdrant"]["url"]
+        QDRANT_API_KEY = st.secrets["qdrant"]["api_key"]
 
+# Initialize Qdrant client
+        self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+        
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Add documents to the vector database."""
         # Convert documents to embeddings
