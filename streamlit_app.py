@@ -46,7 +46,9 @@ def main():
         model_name = get_env_var("LLM_MODEL", "gpt-3.5-turbo")
         st.session_state.assistant = AgenticAssistant(
             vector_db=st.session_state.vector_db,
-            model_name=model_name
+            model_name=model_name,
+            temperature=0,
+            api_key=get_api_key()
         )
     
     # Page title
@@ -116,7 +118,7 @@ def main():
                 # Ensure we're using the most current API key
                 current_api_key = get_api_key()
                 # Pass API key if your assistant class accepts it as a parameter
-                response = st.session_state.assistant.run(query, api_key=current_api_key)
+                response = st.session_state.assistant.run(query)  # No api_key passed
                 st.write(response)
         
         # Add assistant message to chat history
