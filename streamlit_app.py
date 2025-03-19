@@ -4,6 +4,15 @@ from document_processor import DocumentProcessor
 from vector_database import VectorDatabase
 from agentic_assistant import AgenticAssistant
 
+import asyncio
+
+# Ensure the event loop is running
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.set_event_loop(asyncio.new_event_loop())  # Set up a new event loop
+
+
 def get_api_key():
     """Get API key from Streamlit secrets or user input"""
     # First try to get from secrets
