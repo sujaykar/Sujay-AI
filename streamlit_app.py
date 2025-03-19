@@ -69,7 +69,7 @@ def main():
         
         # API Key input
         api_key_input = st.text_input("OpenAI API Key", 
-                                     value=get_api_key(), 
+                                     value="", 
                                      type="password",
                                      key="api_key_input")
         if api_key_input:
