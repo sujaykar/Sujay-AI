@@ -2,8 +2,8 @@ import requests
 import streamlit as st
 
 # Retrieve credentials from Streamlit secrets
-QDRANT_URL = st.secrets["url"]
-QDRANT_API_KEY = st.secrets["api_key"]
+QDRANT_URL = st.secrets["qdrant"]["url"]
+QDRANT_API_KEY = st.secrets["qdrant"]["api_key"]
 
 headers = {"Authorization": f"Bearer {QDRANT_API_KEY}"}
 
