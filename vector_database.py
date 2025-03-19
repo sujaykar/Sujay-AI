@@ -3,6 +3,7 @@
 
 import os
 from typing import List
+import streamlit as st
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
