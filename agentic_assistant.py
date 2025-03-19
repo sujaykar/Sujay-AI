@@ -23,6 +23,7 @@ class AgenticAssistant:
         self.vector_db = vector_db
         self.model_name = model_name
         self.temperature = temperature
+        self.api_key = api_key
         
         # Initialize the language model
         self.llm = ChatOpenAI(
