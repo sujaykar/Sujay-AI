@@ -15,5 +15,9 @@ sentence-transformers>=2.2.2
 python-magic>=0.4.27
 unstructured>=0.10.30
 qdrant-client
+torch==2.1.0
+torchvision==0.16.0
+torchaudio==2.1.0
+
 
 
