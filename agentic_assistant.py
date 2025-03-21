@@ -70,50 +70,77 @@ class AgenticAssistant:
         ]
         return tools
     
-    def search_documents(self, query: str, collection_name: str = "default", k: int = 5) -> str:
-        """Search for documents relevant to the query."""
-        results = self.vector_db.search(query, k=k, collection_name=collection_name)
-        
-        if not results:
-            return "No relevant documents found."
-        
-        context = "\n\n".join([doc.page_content for doc in results])
-        return f"Here are the relevant documents:\n\n{context}"
+    def search_documents(self, query: str, k: int = 5) -> str:
+    """Search across all collections if no specific collection is provided."""
+    collections = self.vector_db.list_collections()  # Get all available collections
+    results = []
+
+    for collection in collections:
+        results.extend(self.vector_db.search(query, k=k, collection_name=collection))
     
-    def analyze_documents(self, query: str, collection_name: str = "default") -> str:
-        """Analyze documents to extract insights."""
-        # Create a retrieval QA chain
-        retriever = self.vector_db.vectorstore.as_retriever(
+    if not results:
+        return "No relevant documents found."
+    
+    context = "\n\n".join([doc.page_content for doc in results])
+    return f"Here are the relevant documents:\n\n{context}"
+
+    
+    def analyze_documents(self, query: str) -> str:
+    """Analyze documents across all available collections to extract insights."""
+    
+    # Step 1: Get all available collections
+    collections = self.vector_db.list_collections()  # Retrieve all collection names
+    
+    # Step 2: Retrieve relevant documents from ALL collections
+    all_results = []
+    for collection in collections:
+        results = self.vector_db.search(query, k=5, collection_name=collection)
+        all_results.extend(results)
+
+    if not all_results:
+        return "No relevant documents found in any collection."
+
+    # Step 3: Combine all document content for analysis
+    context = "\n\n".join([doc.page_content for doc in all_results])
+
+    # Step 4: Enhanced Prompt for Better Document Analysis
+    qa_prompt_template = """
+    You are an expert data analyst skilled in analyzing structured (CSV, tables, charts) 
+    and unstructured (PDFs, text) data. Use the provided context to extract insights.
+
+    **Context Details:**
+    - If the data contains **tables or charts**, describe key patterns and trends.
+    - If it's **text**, summarize the most critical points.
+    - If the question requires **numerical analysis**, provide calculations where necessary.
+    
+    Context:
+    {context}
+
+    Question: {question}
+
+    Provide a detailed analysis, key findings, and actionable recommendations:
+    """
+
+    # Step 5: Set Up Prompt Template
+    qa_prompt = PromptTemplate(
+        template=qa_prompt_template,
+        input_variables=["context", "question"]
+    )
+
+    # Step 6: Initialize RetrievalQA Chain
+    qa_chain = RetrievalQA.from_chain_type(
+        llm=self.llm,
+        chain_type="stuff",
+        retriever=self.vector_db.vectorstore.as_retriever(
             search_kwargs={"k": 5}
-        )
-        
-        qa_prompt_template = """
-        You are an expert data analyst. Use the following pieces of context to answer the question at the end.
-        If you don't know the answer, just say that you don't know, don't try to make up an answer.
-        
-        Context:
-        {context}
-        
-        Question: {question}
-        
-        Provide a detailed analysis with insights and recommendations:
-        """
-        
-        qa_prompt = PromptTemplate(
-            template=qa_prompt_template,
-            input_variables=["context", "question"]
-        )
-        
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-            chain_type_kwargs={"prompt": qa_prompt}
-        )
-        
-        result = qa_chain.run(query)
-        return result
-    
+        ),
+        chain_type_kwargs={"prompt": qa_prompt}
+    )
+
+    # Step 7: Run the QA Chain with the Query
+    result = qa_chain.run(query)
+    return result
+
     def visualize_data(self, instructions: str) -> str:
         """Create visualizations based on the instructions."""
         # This is a placeholder. In a real application, you would parse the instructions
