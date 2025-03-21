@@ -1,3 +1,4 @@
+from langchain.schema import Document
 import streamlit as st
 import os
 import asyncio
