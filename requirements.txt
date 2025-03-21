@@ -18,6 +18,8 @@ qdrant-client
 torch
 torchvision
 torchaudio
+PyPDF2
+
 
 
 
