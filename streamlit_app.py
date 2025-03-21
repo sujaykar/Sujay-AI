@@ -111,7 +111,7 @@ def main():
                 st.write(message["content"])
     
     # Query input
-    query = st.chat_input("Ask me anything about your documents...")
+    query = st.chat_input("I am a friendly assistant ,Ask me anything about your documents or beyond...")
     
     if query:
         # Add user message to chat history
