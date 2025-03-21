@@ -24,9 +24,9 @@ def get_api_key():
         return st.session_state.api_key
     return ""
 
-# Function to process uploaded files
-def process_uploaded_file(uploaded_file):
-    """Extract content from various file formats for immediate chat use."""
+# Function to process uploaded files and store in vector database
+def process_uploaded_file(uploaded_file, collection_name):
+    """Extract content from various file formats and store in the vector database."""
     file_type = uploaded_file.type
     file_name = uploaded_file.name
     
@@ -48,6 +48,10 @@ def process_uploaded_file(uploaded_file):
     else:
         text = "Unsupported file format"
     
+    # ✅ Add the extracted text to the vector database
+    document = Document(page_content=text, metadata={"source": file_name})
+    st.session_state.vector_db.add_documents([document], collection_name=collection_name)
+
     return file_name, text
 
 def main():
@@ -56,9 +60,6 @@ def main():
     # Initialize session state
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
-    
-    if "document_processor" not in st.session_state:
-        st.session_state.document_processor = DocumentProcessor()
     
     if "vector_db" not in st.session_state:
         st.session_state.vector_db = VectorDatabase(persist_directory="db", embedding_model="huggingface")
@@ -86,18 +87,18 @@ def main():
     # **Attach File Option in Chat Session**
     with st.expander("📎 Attach File for Analysis", expanded=False):
         uploaded_file = st.file_uploader("Upload a document for analysis", type=["pdf", "txt", "png", "jpg", "jpeg", "md", "xlsx", "csv"])
-        
+        collection_name = st.text_input("Collection Name", "default")
+
         if uploaded_file:
             with st.spinner("Processing document..."):
-                file_name, extracted_text = process_uploaded_file(uploaded_file)
+                file_name, extracted_text = process_uploaded_file(uploaded_file, collection_name)
                 
                 # Store extracted text in session state for immediate reference
                 st.session_state.latest_uploaded_doc = {
                     "name": file_name,
                     "content": extracted_text
                 }
-
-                st.success(f"✅ Document '{file_name}' uploaded!")
+                st.success(f"✅ Document '{file_name}' processed and added to collection: {collection_name}")
 
     # **User Input for Chat**
     query = st.chat_input("Ask me anything about your documents or beyond...")
