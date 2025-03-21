@@ -21,22 +21,22 @@ class AgenticAssistant:
         self.model_name = model_name
         self.temperature = temperature
         self.api_key = api_key
-        
+
         # Initialize the language model
         self.llm = ChatOpenAI(
             model_name=model_name,
             temperature=temperature
         )
-        
+
         # Initialize conversation memory
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True
         )
-        
+
         # Initialize tools
         self.tools = self._initialize_tools()
-        
+
         # Initialize the agent
         self.agent = initialize_agent(
             self.tools,
@@ -45,108 +45,146 @@ class AgenticAssistant:
             verbose=True,
             memory=self.memory
         )
-    
+
     def _initialize_tools(self) -> List[Tool]:
         """Initialize the tools available to the agent."""
         tools = [
             Tool(
-                name="Document Search",
-                func=self.search_documents,
-                description="Useful for searching through documents. Input should be a query string."
+                name="Document Summarization",
+                func=self.summarize_document,
+                description="Summarizes key points from a document. Input should be a query about a document."
             ),
             Tool(
-                name="Document Analysis",
-                func=self.analyze_documents,
-                description="Useful for analyzing documents to extract insights. Input should be a query about the documents."
+                name="Chart Analysis",
+                func=self.analyze_charts,
+                description="Analyzes charts or graphs and extracts insights. Input should be a query about a chart or dataset."
             ),
             Tool(
-                name="Data Visualization",
-                func=self.visualize_data,
-                description="Useful for creating visualizations from data. Input should be instructions for creating a visualization."
+                name="Financial Data Insights",
+                func=self.analyze_financial_data,
+                description="Analyzes financial reports, stock trends, and market insights."
+            ),
+            Tool(
+                name="General Question Answering",
+                func=self.answer_general_query,
+                description="Handles general queries using document search."
             )
         ]
         return tools
 
-    def search_documents(self, query: str, k: int = 5) -> str:
-        """Search across all collections if no specific collection is provided."""
-        collections = self.vector_db.list_collections()  # Get all available collections
-        results = []
+    def classify_query(self, query: str) -> str:
+        """Classifies the user's query to determine the relevant expert agent."""
+        classification_prompt = f"""
+        You are an AI query classifier. Categorize the following user query into one of these categories:
 
-        for collection in collections:
-            results.extend(self.vector_db.search(query, k=k, collection_name=collection))
+        1. "document_summarization" - if the query is about summarizing a document.
+        2. "chart_analysis" - if the query is about analyzing a chart or visualization.
+        3. "financial_analysis" - if the query is about financial reports, stock trends, or market insights.
+        4. "general_qa" - if the query is a general question.
 
+        Query: "{query}"
+        Output ONLY the category as a string.
+        """
+        
+        response = self.llm.predict(classification_prompt)
+        return response.strip().lower()
+
+    def run(self, query: str) -> str:
+        """Routes the query to the appropriate expert agent based on classification."""
+        try:
+            category = self.classify_query(query)
+
+            if category == "document_summarization":
+                return self.summarize_document(query)
+            elif category == "chart_analysis":
+                return self.analyze_charts(query)
+            elif category == "financial_analysis":
+                return self.analyze_financial_data(query)
+            elif category == "general_qa":
+                return self.answer_general_query(query)
+            else:
+                return "I'm not sure how to categorize your request. Can you clarify?"
+
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def summarize_document(self, query: str) -> str:
+        """Summarizes the document content based on the user's query."""
+        results = self.vector_db.search(query, k=5)
         if not results:
             return "No relevant documents found."
         
         context = "\n\n".join([doc.page_content for doc in results])
-        return f"Here are the relevant documents:\n\n{context}"
 
-    def analyze_documents(self, query: str) -> str:
-        """Analyze documents across all available collections to extract insights."""
+        prompt_template = """
+        You are an expert document summarizer. Read the following document and summarize the key points concisely.
 
-        # Step 1: Get all available collections
-        collections = self.vector_db.list_collections()  # Retrieve all collection names
+        Document:
+        {context}
 
-        # Step 2: Retrieve relevant documents from ALL collections
-        all_results = []
-        for collection in collections:
-            results = self.vector_db.search(query, k=5, collection_name=collection)
-            all_results.extend(results)
+        Summary:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
 
-        if not all_results:
-            return "No relevant documents found in any collection."
-
-        # Step 3: Combine all document content for analysis
-        context = "\n\n".join([doc.page_content for doc in all_results])
-
-        # Step 4: Enhanced Prompt for Better Document Analysis
-        qa_prompt_template = """
-        You are an expert data analyst skilled in analyzing structured (CSV, tables, charts) 
-        and unstructured (PDFs, text) data. Use the provided context to extract insights.
-
-        **Context Details:**
-        - If the data contains **tables or charts**, describe key patterns and trends.
-        - If it's **text**, summarize the most critical points.
-        - If the question requires **numerical analysis**, provide calculations where necessary.
+    def analyze_charts(self, query: str) -> str:
+        """Analyzes charts and provides insights."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant charts found."
         
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are a data analyst skilled in visualizations. Analyze the following charts and provide key insights.
+
+        Charts:
+        {context}
+
+        Insights:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+
+    def analyze_financial_data(self, query: str) -> str:
+        """Analyzes financial reports, stock market trends, and business data."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant financial data found."
+        
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are an expert financial analyst. Review the following financial data and extract key insights.
+
+        Financial Data:
+        {context}
+
+        Analysis and Recommendations:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+
+    def answer_general_query(self, query: str) -> str:
+        """Handles general queries by searching documents and providing answers."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "I couldn't find any relevant information."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+        prompt_template = """
+        Use the provided context to answer the following question.
+
         Context:
         {context}
 
-        Question: {question}
+        Question: {query}
 
-        Provide a detailed analysis, key findings, and actionable recommendations:
+        Answer:
         """
-
-        # Step 5: Set Up Prompt Template
-        qa_prompt = PromptTemplate(
-            template=qa_prompt_template,
-            input_variables=["context", "question"]
-        )
-
-        # Step 6: Initialize RetrievalQA Chain
-        qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=self.vector_db.vectorstore.as_retriever(
-                search_kwargs={"k": 5}
-            ),
-            chain_type_kwargs={"prompt": qa_prompt}
-        )
-
-        # Step 7: Run the QA Chain with the Query
-        result = qa_chain.run(query)
-        return result
-
-    def visualize_data(self, instructions: str) -> str:
-        """Create visualizations based on the instructions."""
-        # This is a placeholder. In a real application, you would parse the instructions
-        # and create appropriate visualizations.
-        return "Visualization feature is not yet implemented."
-
-    def run(self, query: str) -> str:
-        """Run the agent with the given query."""
-        try:
-            response = self.agent.run(input=query)
-            return response
-        except Exception as e:
-            return f"Error: {str(e)}"
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "query"])
+        response = self.llm.predict(prompt.format(context=context, query=query))
+        return response
