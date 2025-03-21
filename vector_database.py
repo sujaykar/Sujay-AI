@@ -33,13 +33,12 @@ class VectorDatabase:
             )
 
         # ✅ Connect to the Qdrant server (using Qdrant Cloud or local server)
-       
         QDRANT_URL = st.secrets["qdrant"]["url"]
         QDRANT_API_KEY = st.secrets["qdrant"]["api_key"]
 
-# Initialize Qdrant client
+        # Initialize Qdrant client
         self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-        
+
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Add documents to the vector database."""
         # Convert documents to embeddings
@@ -57,28 +56,27 @@ class VectorDatabase:
         self.client.upsert(collection_name=collection_name, points=points)
 
     def search(self, query: str, k: int = 5) -> List[Document]:
-    """Search for documents across all available collections."""
-    
-    collections = self.list_collections()  # Get all stored collections
-    all_results = []
-
-    for collection in collections:
-        query_vector = self.embeddings.embed_query(query)
+        """Search for documents across all available collections."""
         
-        # Perform the search in each collection
-        search_results = self.client.search(
-            collection_name=collection,
-            query_vector=query_vector,
-            limit=k,
-        )
+        collections = self.list_collections()  # Get all stored collections
+        all_results = []
 
-        all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
+        for collection in collections:
+            query_vector = self.embeddings.embed_query(query)
 
-    if not all_results:
-        return ["No relevant documents found in any collection."]
-    
-    return all_results
+            # Perform the search in each collection
+            search_results = self.client.search(
+                collection_name=collection,
+                query_vector=query_vector,
+                limit=k,
+            )
 
+            all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
+
+        if not all_results:
+            return ["No relevant documents found in any collection."]
+
+        return all_results
 
     def list_collections(self) -> List[str]:
         """List all collections in the database."""
