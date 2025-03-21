@@ -56,20 +56,29 @@ class VectorDatabase:
         points = [{"id": i, "vector": vec, "payload": {"text": texts[i]}} for i, vec in enumerate(vectors)]
         self.client.upsert(collection_name=collection_name, points=points)
 
-    def search(self, query: str, k: int = 5, collection_name: str = "default") -> List[Document]:
-        """Search for documents similar to the query."""
-        # Convert query into vector embedding
-        query_vector = self.embeddings.embed_query(query)
+    def search(self, query: str, k: int = 5) -> List[Document]:
+    """Search for documents across all available collections."""
+    
+    collections = self.list_collections()  # Get all stored collections
+    all_results = []
 
-        # Perform the search
+    for collection in collections:
+        query_vector = self.embeddings.embed_query(query)
+        
+        # Perform the search in each collection
         search_results = self.client.search(
-            collection_name=collection_name,
+            collection_name=collection,
             query_vector=query_vector,
             limit=k,
         )
 
-        # Return matched documents
-        return [Document(page_content=hit.payload["text"]) for hit in search_results]
+        all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
+
+    if not all_results:
+        return ["No relevant documents found in any collection."]
+    
+    return all_results
+
 
     def list_collections(self) -> List[str]:
         """List all collections in the database."""
