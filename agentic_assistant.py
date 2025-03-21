@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
-
 import os
 from typing import List, Dict, Any, Optional
 from langchain.chat_models import ChatOpenAI
@@ -19,7 +16,7 @@ import pandas as pd
 import plotly.express as px
 
 class AgenticAssistant:
-    def __init__(self, vector_db, model_name="gpt-3.5-turbo", temperature=0,api_key=None):
+    def __init__(self, vector_db, model_name="gpt-3.5-turbo", temperature=0, api_key=None):
         self.vector_db = vector_db
         self.model_name = model_name
         self.temperature = temperature
@@ -69,84 +66,83 @@ class AgenticAssistant:
             )
         ]
         return tools
-    
+
     def search_documents(self, query: str, k: int = 5) -> str:
-    """Search across all collections if no specific collection is provided."""
-    collections = self.vector_db.list_collections()  # Get all available collections
-    results = []
+        """Search across all collections if no specific collection is provided."""
+        collections = self.vector_db.list_collections()  # Get all available collections
+        results = []
 
-    for collection in collections:
-        results.extend(self.vector_db.search(query, k=k, collection_name=collection))
-    
-    if not results:
-        return "No relevant documents found."
-    
-    context = "\n\n".join([doc.page_content for doc in results])
-    return f"Here are the relevant documents:\n\n{context}"
+        for collection in collections:
+            results.extend(self.vector_db.search(query, k=k, collection_name=collection))
 
-    
+        if not results:
+            return "No relevant documents found."
+        
+        context = "\n\n".join([doc.page_content for doc in results])
+        return f"Here are the relevant documents:\n\n{context}"
+
     def analyze_documents(self, query: str) -> str:
-    """Analyze documents across all available collections to extract insights."""
-    
-    # Step 1: Get all available collections
-    collections = self.vector_db.list_collections()  # Retrieve all collection names
-    
-    # Step 2: Retrieve relevant documents from ALL collections
-    all_results = []
-    for collection in collections:
-        results = self.vector_db.search(query, k=5, collection_name=collection)
-        all_results.extend(results)
+        """Analyze documents across all available collections to extract insights."""
 
-    if not all_results:
-        return "No relevant documents found in any collection."
+        # Step 1: Get all available collections
+        collections = self.vector_db.list_collections()  # Retrieve all collection names
 
-    # Step 3: Combine all document content for analysis
-    context = "\n\n".join([doc.page_content for doc in all_results])
+        # Step 2: Retrieve relevant documents from ALL collections
+        all_results = []
+        for collection in collections:
+            results = self.vector_db.search(query, k=5, collection_name=collection)
+            all_results.extend(results)
 
-    # Step 4: Enhanced Prompt for Better Document Analysis
-    qa_prompt_template = """
-    You are an expert data analyst skilled in analyzing structured (CSV, tables, charts) 
-    and unstructured (PDFs, text) data. Use the provided context to extract insights.
+        if not all_results:
+            return "No relevant documents found in any collection."
 
-    **Context Details:**
-    - If the data contains **tables or charts**, describe key patterns and trends.
-    - If it's **text**, summarize the most critical points.
-    - If the question requires **numerical analysis**, provide calculations where necessary.
-    
-    Context:
-    {context}
+        # Step 3: Combine all document content for analysis
+        context = "\n\n".join([doc.page_content for doc in all_results])
 
-    Question: {question}
+        # Step 4: Enhanced Prompt for Better Document Analysis
+        qa_prompt_template = """
+        You are an expert data analyst skilled in analyzing structured (CSV, tables, charts) 
+        and unstructured (PDFs, text) data. Use the provided context to extract insights.
 
-    Provide a detailed analysis, key findings, and actionable recommendations:
-    """
+        **Context Details:**
+        - If the data contains **tables or charts**, describe key patterns and trends.
+        - If it's **text**, summarize the most critical points.
+        - If the question requires **numerical analysis**, provide calculations where necessary.
+        
+        Context:
+        {context}
 
-    # Step 5: Set Up Prompt Template
-    qa_prompt = PromptTemplate(
-        template=qa_prompt_template,
-        input_variables=["context", "question"]
-    )
+        Question: {question}
 
-    # Step 6: Initialize RetrievalQA Chain
-    qa_chain = RetrievalQA.from_chain_type(
-        llm=self.llm,
-        chain_type="stuff",
-        retriever=self.vector_db.vectorstore.as_retriever(
-            search_kwargs={"k": 5}
-        ),
-        chain_type_kwargs={"prompt": qa_prompt}
-    )
+        Provide a detailed analysis, key findings, and actionable recommendations:
+        """
 
-    # Step 7: Run the QA Chain with the Query
-    result = qa_chain.run(query)
-    return result
+        # Step 5: Set Up Prompt Template
+        qa_prompt = PromptTemplate(
+            template=qa_prompt_template,
+            input_variables=["context", "question"]
+        )
+
+        # Step 6: Initialize RetrievalQA Chain
+        qa_chain = RetrievalQA.from_chain_type(
+            llm=self.llm,
+            chain_type="stuff",
+            retriever=self.vector_db.vectorstore.as_retriever(
+                search_kwargs={"k": 5}
+            ),
+            chain_type_kwargs={"prompt": qa_prompt}
+        )
+
+        # Step 7: Run the QA Chain with the Query
+        result = qa_chain.run(query)
+        return result
 
     def visualize_data(self, instructions: str) -> str:
         """Create visualizations based on the instructions."""
         # This is a placeholder. In a real application, you would parse the instructions
         # and create appropriate visualizations.
         return "Visualization feature is not yet implemented."
-    
+
     def run(self, query: str) -> str:
         """Run the agent with the given query."""
         try:
@@ -154,10 +150,3 @@ class AgenticAssistant:
             return response
         except Exception as e:
             return f"Error: {str(e)}"
-
-
-# In[ ]:
-
-
-
-
