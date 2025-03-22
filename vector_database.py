@@ -55,28 +55,29 @@ class VectorDatabase:
         points = [{"id": i, "vector": vec, "payload": {"text": texts[i]}} for i, vec in enumerate(vectors)]
         self.client.upsert(collection_name=collection_name, points=points)
 
-    def search(self, query: str, k: int = 5) -> List[Document]:
-        """Search for documents across all available collections."""
-        
-        collections = self.list_collections()  # Get all stored collections
-        all_results = []
+    def search(self, query: str, k: int = 5, collection_name: Optional[str] = None) -> List[Document]:
+    """Search for documents across a specific collection or all collections if none is specified."""
 
-        for collection in collections:
-            query_vector = self.embeddings.embed_query(query)
+    # If collection_name is provided, search only that collection, else search all collections
+    collections = [collection_name] if collection_name else self.list_collections()
+    all_results = []
 
-            # Perform the search in each collection
-            search_results = self.client.search(
-                collection_name=collection,
-                query_vector=query_vector,
-                limit=k,
-            )
+    for collection in collections:
+        query_vector = self.embeddings.embed_query(query)
 
-            all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
+        # Perform search in the collection
+        search_results = self.client.search(
+            collection_name=collection,
+            query_vector=query_vector,
+            limit=k,
+        )
 
-        if not all_results:
-            return ["No relevant documents found in any collection."]
+        all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
 
-        return all_results
+    if not all_results:
+        return [Document(page_content="No relevant documents found in any collection.")]
+
+    return all_results
 
     def list_collections(self) -> List[str]:
         """List all collections in the database."""
