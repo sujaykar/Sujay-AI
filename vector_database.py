@@ -2,7 +2,7 @@
 # coding: utf-8
 
 import os
-from typing import List
+from typing import List, Optional
 import streamlit as st
 from langchain.schema import Document
 from qdrant_client import QdrantClient
@@ -56,28 +56,28 @@ class VectorDatabase:
         self.client.upsert(collection_name=collection_name, points=points)
 
     def search(self, query: str, k: int = 5, collection_name: Optional[str] = None) -> List[Document]:
-    """Search for documents across a specific collection or all collections if none is specified."""
+        """Search for documents across a specific collection or all collections if none is specified."""
 
-    # If collection_name is provided, search only that collection, else search all collections
-    collections = [collection_name] if collection_name else self.list_collections()
-    all_results = []
+        # If collection_name is provided, search only that collection, else search all collections
+        collections = [collection_name] if collection_name else self.list_collections()
+        all_results = []
 
-    for collection in collections:
-        query_vector = self.embeddings.embed_query(query)
+        for collection in collections:
+            query_vector = self.embeddings.embed_query(query)
 
-        # Perform search in the collection
-        search_results = self.client.search(
-            collection_name=collection,
-            query_vector=query_vector,
-            limit=k,
-        )
+            # Perform search in the collection
+            search_results = self.client.search(
+                collection_name=collection,
+                query_vector=query_vector,
+                limit=k,
+            )
 
-        all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
+            all_results.extend([Document(page_content=hit.payload["text"]) for hit in search_results])
 
-    if not all_results:
-        return [Document(page_content="No relevant documents found in any collection.")]
+        if not all_results:
+            return [Document(page_content="No relevant documents found in any collection.")]
 
-    return all_results
+        return all_results
 
     def list_collections(self) -> List[str]:
         """List all collections in the database."""
