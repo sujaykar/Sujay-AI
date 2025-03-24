@@ -20,8 +20,8 @@ except RuntimeError:
 
 # Constants for best practices
 MAX_CHAT_HISTORY = 10  # Keep last 10 messages
-MAX_DOC_CHARACTERS = 3000  # Limit extracted text per document
-MAX_VECTOR_DOCS = 3  # Retrieve only top 3 relevant documents
+MAX_DOC_CHARACTERS = 1000000  # Limit extracted text per document
+MAX_VECTOR_DOCS = 10  # Retrieve only top 3 relevant documents
 MAX_TOKENS = 8000  # Safe limit for OpenAI input
 
 # Initialize the VectorDatabase instance
