@@ -58,7 +58,7 @@ def process_uploaded_file(uploaded_file, collection_name):
     # ✅ Limit extracted text length
     text = text[:MAX_DOC_CHARACTERS]
 
-    # Store document in the VectorDatabase
+    # Store document in the VectorDatabase (only once)
     vector_db.add_documents([Document(page_content=text)], collection_name=collection_name)
 
     return file_name, text
@@ -97,10 +97,11 @@ def main():
         uploaded_file = st.file_uploader("Upload a document", type=["pdf", "txt", "png", "jpg", "jpeg", "md", "xlsx", "csv"])
         collection_name = st.text_input("Collection Name", "default")
 
-        if uploaded_file:
+        if uploaded_file and collection_name not in st.session_state:
             with st.spinner("Processing document..."):
                 file_name, extracted_text = process_uploaded_file(uploaded_file, collection_name)
                 
+                # Save latest document info in session state (do not process again)
                 st.session_state.latest_uploaded_doc = {
                     "name": file_name,
                     "content": extracted_text
@@ -108,7 +109,7 @@ def main():
                 st.success(f"✅ Document '{file_name}' processed and stored.")
 
     # **User Input for Chat**
-    query = st.chat_input("Ask me anything...")
+    query = st.chat_input("I am an intelligent assistant ,Ask me anything...")
 
     if query:
         # **Add User Message to Chat History**
