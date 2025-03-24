@@ -2,13 +2,15 @@ import streamlit as st
 import os
 import asyncio
 from langchain.schema import Document
-from qdrant_client import QdrantClient
 from langchain.embeddings.openai import OpenAIEmbeddings
 from openai import OpenAI
 from PyPDF2 import PdfReader
 from PIL import Image
 import pytesseract
 import pandas as pd
+
+# Import the VectorDatabase class
+from vectordatabase_app import VectorDatabase
 
 # Ensure event loop is running
 try:
@@ -22,9 +24,8 @@ MAX_DOC_CHARACTERS = 3000  # Limit extracted text per document
 MAX_VECTOR_DOCS = 3  # Retrieve only top 3 relevant documents
 MAX_TOKENS = 8000  # Safe limit for OpenAI input
 
-# Initialize Qdrant client
-qdrant_client = QdrantClient(":memory:")  # Use persistent storage in production
-embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize the VectorDatabase instance
+vector_db = VectorDatabase(persist_directory="db", embedding_model="openai")
 
 # Function to extract API Key
 def get_api_key():
@@ -57,41 +58,20 @@ def process_uploaded_file(uploaded_file, collection_name):
     # ✅ Limit extracted text length
     text = text[:MAX_DOC_CHARACTERS]
 
-    # Check if the collection exists before upserting
-    existing_collections = qdrant_client.get_collections().collections
-    if collection_name not in existing_collections:
-        # If collection doesn't exist, create it
-        qdrant_client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=len(embedding_model.embed_query(text)), distance=Distance.COSINE)
-        )
-
-    # ✅ Generate embedding & store in Qdrant
-    embedding = embedding_model.embed_query(text)
-    qdrant_client.upsert(collection_name, [(file_name, embedding, {"source": file_name, "text": text})])
+    # Store document in the VectorDatabase
+    vector_db.add_documents([Document(page_content=text)], collection_name=collection_name)
 
     return file_name, text
 
 # Function to retrieve relevant embeddings from all Qdrant collections
 def retrieve_from_qdrant(query):
     """Retrieve top-k similar documents from all available Qdrant collections."""
-    query_embedding = embedding_model.embed_query(query)
-    
-    # Get all available collections
-    all_collections = qdrant_client.get_collections().collections
-    all_contexts = []
-
-    for collection in all_collections:
-        collection_name = collection.name
-        results = qdrant_client.search(collection_name, query_vector=query_embedding, limit=MAX_VECTOR_DOCS)
-
-        retrieved_texts = [res.payload["text"][:MAX_DOC_CHARACTERS] for res in results]
-        all_contexts.extend(retrieved_texts)
-
+    results = vector_db.search(query, k=MAX_VECTOR_DOCS)
+    all_contexts = [res.page_content[:MAX_DOC_CHARACTERS] for res in results]
     return "\n\n".join(all_contexts)
 
 def main():
-    st.set_page_config(page_title=" SK AI Knowledge Assistant", page_icon="🤖", layout="wide")
+    st.set_page_config(page_title="SK AI Knowledge Assistant", page_icon="🤖", layout="wide")
 
     # Initialize session state
     if "chat_history" not in st.session_state:
