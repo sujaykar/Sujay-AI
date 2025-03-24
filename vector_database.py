@@ -9,6 +9,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 from langchain.vectorstores import Qdrant
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from qdrant_client.models import Distance, VectorParams, HnswConfig
 
 
 class VectorDatabase:
@@ -52,7 +53,7 @@ class VectorDatabase:
             print(f"Collection '{collection_name}' not found. Creating...")
             self.client.create_collection(
                 collection_name=collection_name,
-                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE,hnsw_config=HnswConfig(m=16,ef_construction=200 )),
             )
         
         # Upload embeddings to Qdrant
