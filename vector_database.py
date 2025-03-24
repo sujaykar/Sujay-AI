@@ -12,7 +12,7 @@ from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddin
 
 
 class VectorDatabase:
-    def __init__(self, persist_directory: str = "db", embedding_model: str = "huggingface"):
+    def __init__(self, persist_directory: str = "db", embedding_model: str = "openai"):
         """Initialize the Qdrant vector database.
 
         Args:
