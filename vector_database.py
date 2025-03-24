@@ -40,24 +40,24 @@ class VectorDatabase:
         self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
 
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
-    """Add documents to the vector database."""
-    texts = [doc.page_content for doc in documents]
-    vectors = self.embeddings.embed_documents(texts)
+        """Add documents to the vector database."""
+        texts = [doc.page_content for doc in documents]
+        vectors = self.embeddings.embed_documents(texts)
 
-    # Get the correct vector size
-    vector_size = len(vectors[0])  # This should be 1536 for OpenAIEmbeddings, or 768 for HuggingFaceEmbeddings
+        # Get the correct vector size
+        vector_size = len(vectors[0])  # This should be 1536 for OpenAIEmbeddings, or 768 for HuggingFaceEmbeddings
 
-    # Check if the collection exists before attempting to recreate it
-    if collection_name not in self.list_collections():
-        print(f"Collection '{collection_name}' not found. Creating...")
-        self.client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
-        )
-    
-    # Upload embeddings to Qdrant
-    points = [{"id": i, "vector": vec, "payload": {"text": texts[i]}} for i, vec in enumerate(vectors)]
-    self.client.upsert(collection_name=collection_name, points=points)
+        # Check if the collection exists before attempting to recreate it
+        if collection_name not in self.list_collections():
+            print(f"Collection '{collection_name}' not found. Creating...")
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            )
+        
+        # Upload embeddings to Qdrant
+        points = [{"id": i, "vector": vec, "payload": {"text": texts[i]}} for i, vec in enumerate(vectors)]
+        self.client.upsert(collection_name=collection_name, points=points)
 
     def search(self, query: str, k: int = 5, collection_name: Optional[str] = None) -> List[Document]:
         """Search for documents across a specific collection or all collections if none is specified."""
