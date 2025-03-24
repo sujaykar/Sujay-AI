@@ -92,7 +92,7 @@ def main():
         st.session_state.latest_uploaded_doc = None
 
     # **Page Title**
-    st.title("AI Knowledge Assistant")
+    st.title("SK AI Knowledge Assistant")
 
     # **Chat Interface**
     chat_container = st.container()
