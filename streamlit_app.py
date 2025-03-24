@@ -57,6 +57,15 @@ def process_uploaded_file(uploaded_file, collection_name):
     # ✅ Limit extracted text length
     text = text[:MAX_DOC_CHARACTERS]
 
+    # Check if the collection exists before upserting
+    existing_collections = qdrant_client.get_collections().collections
+    if collection_name not in existing_collections:
+        # If collection doesn't exist, create it
+        qdrant_client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(size=len(embedding_model.embed_query(text)), distance=Distance.COSINE)
+        )
+
     # ✅ Generate embedding & store in Qdrant
     embedding = embedding_model.embed_query(text)
     qdrant_client.upsert(collection_name, [(file_name, embedding, {"source": file_name, "text": text})])
