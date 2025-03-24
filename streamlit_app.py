@@ -10,7 +10,7 @@ import pytesseract
 import pandas as pd
 
 # Import the VectorDatabase class
-from vectordatabase_app import VectorDatabase
+from vector_database import VectorDatabase
 
 # Ensure event loop is running
 try:
