@@ -44,8 +44,8 @@ class VectorDatabase:
         texts = [doc.page_content for doc in documents]
         vectors = self.embeddings.embed_documents(texts)
 
-        # Get the correct vector size
-        vector_size = len(vectors[0])  # This should be 1536 for OpenAIEmbeddings, or 768 for HuggingFaceEmbeddings
+        # Get the correct vector size (1536 for OpenAI embeddings)
+        vector_size = len(vectors[0])  # This should be 1536 for OpenAIEmbeddings
 
         # Check if the collection exists before attempting to recreate it
         if collection_name not in self.list_collections():
