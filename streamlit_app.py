@@ -74,9 +74,13 @@ def retrieve_from_qdrant(query):
     results = vector_db.search(
         query, 
         k=MAX_VECTOR_DOCS,
-        score_threshold=MIN_SIMILARITY  # New threshold
+        search_type="similarity_score_threshold",  # Add this line
+        search_kwargs={
+            "score_threshold": MIN_SIMILARITY,
+            "filter": None  # Add metadata filters here if needed
+        }
     )
-    return "\n\n".join([res.page_content for res in results if res.score >= MIN_SIMILARITY])
+    return "\n\n".join([res.page_content for res in results])
 
 # --- Modified Main Logic ---
 def main():
