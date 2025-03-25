@@ -72,19 +72,17 @@ def process_uploaded_file(uploaded_file, collection_name):
 def retrieve_from_qdrant(query):
     """Optimized retrieval with similarity filtering"""
     results = vector_db.search(
-        query, 
+        query=query,
         k=MAX_VECTOR_DOCS,
-        search_type="similarity_score_threshold",  # Add this line
-        search_kwargs={
-            "score_threshold": MIN_SIMILARITY,
-            "filter": None  # Add metadata filters here if needed
-        }
+        score_threshold=MIN_SIMILARITY,
+        metadata_filter=None  # Add metadata filters here if needed
     )
     return "\n\n".join([res.page_content for res in results])
 
+
 # --- Modified Main Logic ---
 def main():
-    # ... (existing setup code) ...
+   
 
     if query:
         # --- New: Dynamic Reasoning Effort ---
