@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import asyncio
 from langchain.schema import Document
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_community.embeddings.openai import OpenAIEmbeddings
 from openai import OpenAI
 from PyPDF2 import PdfReader
 from PIL import Image
@@ -141,14 +141,14 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 response = openai_client.chat.completions.create(
-                    model="o3-mini",
-                    reasoning="high",
-                                        messages=[
-                        {"role": "system", "content": "You are a helpful AI assistant that provides insightful answers."},
-                        {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}"}
-                    ]
-                    
-                )
+    model="o3-mini",
+    reasoning_effort="high",  # Use "low", "medium", or "high"
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}"}
+    ]
+)
+
                 st.write(response.choices[0].message.content)
 
         # **Add Assistant Response to Chat History**
