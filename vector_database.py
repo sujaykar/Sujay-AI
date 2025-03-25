@@ -4,6 +4,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue, Distance, VectorParams, HnswConfig
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 import streamlit as st
+from qdrant_client.models import PointStruct
 
 class VectorDatabase:
     def __init__(self, embedding_model: str = "openai"):
@@ -73,37 +74,38 @@ class VectorDatabase:
         collections = self.list_collections()
         return collection_name in collections
 
-    def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
-        """Improved document insertion with metadata handling."""
-        # Create collection if it doesn't exist
-        if not self._collection_exists(collection_name):
-            self.client.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(
-                    size=len(self.embeddings.embed_query("test")),  # Get embedding dim
-                    distance=Distance.COSINE,
-                    hnsw_config=HnswConfig(m=16, ef_construction=200)  # HNSW Configuration
-                )
-            )
 
-        # Prepare documents with metadata
-        points = [
-            {
-                "id": str(hash(doc.page_content + str(doc.metadata))),
-                "vector": self.embeddings.embed_query(doc.page_content),
-                "payload": {
-                    "text": doc.page_content,
-                    "metadata": doc.metadata
-                }
-            }
-            for doc in documents
-        ]
-
-        # Batch upsert
-        self.client.upsert(
+def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
+    """Improved document insertion with metadata handling."""
+    # Create collection if it doesn't exist
+    if not self._collection_exists(collection_name):
+        self.client.create_collection(
             collection_name=collection_name,
-            points=points
+            vectors_config=VectorParams(
+                size=len(self.embeddings.embed_query("test")),  # Get embedding dim
+                distance=Distance.COSINE,
+                hnsw_config=HnswConfig(m=16, ef_construction=200)  # HNSW Configuration
+            )
         )
+
+    # ✅ Prepare documents in correct PointStruct format
+    points = [
+        PointStruct(  # ✅ Use PointStruct
+            id=str(hash(doc.page_content + str(doc.metadata))),
+            vector=self.embeddings.embed_query(doc.page_content),
+            payload={
+                "text": doc.page_content,
+                "metadata": doc.metadata
+            }
+        )
+        for doc in documents
+    ]
+
+    # ✅ Ensure correct structure before upserting
+    self.client.upsert(
+        collection_name=collection_name,
+        points=points  # ✅ Now in correct PointStruct format
+    )
 
     def list_collections(self) -> List[str]:
         """List all collections in the database."""
