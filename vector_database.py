@@ -5,8 +5,14 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 
 class VectorDatabase:
-    def __init__(self, persist_directory: str = "db", embedding_model: str = "openai"):
-        self.client = QdrantClient(path=persist_directory)
+    def __init__(self, embedding_model: str = "openai"):
+        # Get credentials from Streamlit secrets
+        self.client = QdrantClient(
+            url=st.secrets.qdrant.url,
+            api_key=st.secrets.qdrant.api_key,
+            prefer_grpc=True  # Better for production
+        )
+        
         
         # Initialize embeddings
         if embedding_model == "openai":
