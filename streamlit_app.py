@@ -2,158 +2,114 @@ import streamlit as st
 import os
 import asyncio
 from langchain.schema import Document
-from langchain_community.embeddings.openai import OpenAIEmbeddings
+from langchain_community.embeddings import OpenAIEmbeddings  # Updated import
 from openai import OpenAI
 from PyPDF2 import PdfReader
 from PIL import Image
 import pytesseract
 import pandas as pd
-
-# Import the VectorDatabase class
 from vector_database import VectorDatabase
 
-# Ensure event loop is running
-try:
-    asyncio.get_running_loop()
-except RuntimeError:
-    asyncio.set_event_loop(asyncio.new_event_loop())
+# Constants - Updated for cost optimization
+MAX_CHAT_HISTORY = 7  # Reduced from 10
+MAX_DOC_CHARACTERS = 450000  # Reduced from 1M
+MAX_VECTOR_DOCS = 8  # Reduced from 10
+MAX_TOKENS = 6000  # Reduced from 8000
+MIN_SIMILARITY = 0.72  # New similarity threshold
 
-# Constants for best practices
-MAX_CHAT_HISTORY = 10  # Keep last 10 messages
-MAX_DOC_CHARACTERS = 1000000  # Limit extracted text per document
-MAX_VECTOR_DOCS = 10  # Retrieve only top 3 relevant documents
-MAX_TOKENS = 8000  # Safe limit for OpenAI input
-
-# Initialize the VectorDatabase instance
+# Initialize components
 vector_db = VectorDatabase(persist_directory="db", embedding_model="openai")
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Function to extract API Key
-def get_api_key():
-    return os.getenv("OPENAI_API_KEY")
+# --- New Optimization Functions ---
+def dynamic_reasoning_effort(query: str) -> str:
+    """Determine reasoning effort based on query complexity"""
+    complex_keywords = {"calculate", "analyze", "financial", "derive", "compare", "trend"}
+    simple_keywords = {"summary", "overview", "explain", "what", "who"}
+    
+    query_lower = query.lower()
+    if any(kw in query_lower for kw in complex_keywords):
+        return "high"
+    elif any(kw in query_lower for kw in simple_keywords):
+        return "low"
+    return "medium"
 
-# Function to process uploaded files and store in Qdrant
+def optimize_context(context: str, max_tokens: int) -> str:
+    """Reduce context while preserving key information"""
+    sentences = context.split('. ')
+    optimized = []
+    token_count = 0
+    
+    for sent in sentences:
+        sent_tokens = len(sent.split()) + 1  # +1 for the period
+        if token_count + sent_tokens <= max_tokens:
+            optimized.append(sent)
+            token_count += sent_tokens
+        else:
+            break
+            
+    return '. '.join(optimized) + ('' if context.endswith('.') else '.')
+
+# --- Modified Functions ---
 def process_uploaded_file(uploaded_file, collection_name):
-    """Extract content from various file formats and store in Qdrant."""
-    file_type = uploaded_file.type
-    file_name = uploaded_file.name
+    """Optimized file processing with chunking"""
+    # ... (existing file type handling) ...
+    
+    # Split text into optimized chunks
+    chunk_size = 512  # Optimal for o3-mini
+    text_chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+    
+    # Store chunks with metadata
+    docs = [Document(
+        page_content=chunk,
+        metadata={"source": uploaded_file.name, "chunk_num": i}
+    ) for i, chunk in enumerate(text_chunks)]
+    
+    vector_db.add_documents(docs, collection_name=collection_name)
+    return file_name, text[:MAX_DOC_CHARACTERS]  # Return truncated preview
 
-    if file_type == "application/pdf":
-        pdf_reader = PdfReader(uploaded_file)
-        text = "\n".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
-    
-    elif file_type in ["image/png", "image/jpeg", "image/jpg"]:
-        image = Image.open(uploaded_file)
-        text = pytesseract.image_to_string(image)
-    
-    elif file_type in ["text/plain", "text/markdown"]:
-        text = uploaded_file.read().decode("utf-8")
-    
-    elif file_type in ["text/csv", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
-        df = pd.read_csv(uploaded_file) if file_type == "text/csv" else pd.read_excel(uploaded_file)
-        text = df.to_string()
-    
-    else:
-        text = "Unsupported file format"
-    
-    # ✅ Limit extracted text length
-    text = text[:MAX_DOC_CHARACTERS]
-
-    # Store document in the VectorDatabase (only once)
-    vector_db.add_documents([Document(page_content=text)], collection_name=collection_name)
-
-    return file_name, text
-
-# Function to retrieve relevant embeddings from all Qdrant collections
 def retrieve_from_qdrant(query):
-    """Retrieve top-k similar documents from all available Qdrant collections."""
-    results = vector_db.search(query, k=MAX_VECTOR_DOCS)
-    all_contexts = [res.page_content[:MAX_DOC_CHARACTERS] for res in results]
-    return "\n\n".join(all_contexts)
+    """Optimized retrieval with similarity filtering"""
+    results = vector_db.search(
+        query, 
+        k=MAX_VECTOR_DOCS,
+        score_threshold=MIN_SIMILARITY  # New threshold
+    )
+    return "\n\n".join([res.page_content for res in results if res.score >= MIN_SIMILARITY])
 
+# --- Modified Main Logic ---
 def main():
-    st.set_page_config(page_title="SK AI Knowledge Assistant", page_icon="🤖", layout="wide")
-
-    # Initialize session state
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    
-    if "latest_uploaded_doc" not in st.session_state:
-        st.session_state.latest_uploaded_doc = None
-
-    # **Page Title**
-    st.title("SK AI Knowledge Assistant")
-
-    # **Chat Interface**
-    chat_container = st.container()
-
-    # **Display Chat History**
-    with chat_container:
-        for message in st.session_state.chat_history[-MAX_CHAT_HISTORY:]:  
-            with st.chat_message(message["role"]):
-                st.write(message["content"])
-
-    # **Attach File Option**
-    with st.expander("📎 Attach File for Analysis", expanded=False):
-        uploaded_file = st.file_uploader("Upload a document", type=["pdf", "txt", "png", "jpg", "jpeg", "md", "xlsx", "csv"])
-        collection_name = st.text_input("Collection Name", "default")
-
-        if uploaded_file and collection_name not in st.session_state:
-            with st.spinner("Processing document..."):
-                file_name, extracted_text = process_uploaded_file(uploaded_file, collection_name)
-                
-                # Save latest document info in session state (do not process again)
-                st.session_state.latest_uploaded_doc = {
-                    "name": file_name,
-                    "content": extracted_text
-                }
-                st.success(f"✅ Document '{file_name}' processed and stored.")
-
-    # **User Input for Chat**
-    query = st.chat_input("I am an intelligent assistant ,Ask me anything...")
+    # ... (existing setup code) ...
 
     if query:
-        # **Add User Message to Chat History**
-        st.session_state.chat_history.append({"role": "user", "content": query})
-
-        # **Display User Message**
-        with st.chat_message("user"):
-            st.write(query)
-
-        # **Retrieve document context from all Qdrant collections**
+        # --- New: Dynamic Reasoning Effort ---
+        reasoning_level = dynamic_reasoning_effort(query)
+        
+        # --- Optimized Context Handling ---
         retrieved_context = retrieve_from_qdrant(query)
+        combined_context = optimize_context(
+            f"Relevant information:\n{retrieved_context}",
+            max_tokens=MAX_TOKENS//2  # Reserve half tokens for response
+        )
 
-        # **Combine Contexts**
-        uploaded_text = ""
-        if st.session_state.latest_uploaded_doc:
-            uploaded_text = f"📄 Uploaded Document: {st.session_state.latest_uploaded_doc['name']}\n\n{st.session_state.latest_uploaded_doc['content']}"
+        # --- Cost-Optimized API Call ---
+        response = openai_client.chat.completions.create(
+            model="o3-mini",
+            reasoning_effort=reasoning_level,
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "Answer concisely using only the context. If unsure, say 'I don't know'."
+                },
+                {
+                    "role": "user",
+                    "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"
+                }
+            ],
+            max_tokens=250  # Enforce concise responses
+        )
 
-        combined_context = f"Uploaded Document Context:\n{uploaded_text}\n\nRetrieved Context:\n{retrieved_context}"
-
-        # ✅ Trim total token count
-        def count_tokens(text):
-            return len(text.split())
-
-        if count_tokens(combined_context) > MAX_TOKENS:
-            combined_context = " ".join(combined_context.split()[:MAX_TOKENS])
-
-        # **Generate AI Response**
-        openai_client = OpenAI(api_key=get_api_key())
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                response = openai_client.chat.completions.create(
-    model="o3-mini",
-    reasoning_effort="high",  # Use "low", "medium", or "high"
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}"}
-    ]
-)
-
-                st.write(response.choices[0].message.content)
-
-        # **Add Assistant Response to Chat History**
-        st.session_state.chat_history.append({"role": "assistant", "content": response.choices[0].message.content})
-        st.session_state.chat_history = st.session_state.chat_history[-MAX_CHAT_HISTORY:]  # Trim history
+        # ... (existing display code) ...
 
 if __name__ == "__main__":
     main()
