@@ -21,11 +21,11 @@ class VectorDatabase:
         else:
             self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
-    def search(
+        def search(
         self, 
         query: str, 
         k: int = 5, 
-        score_threshold: float = 0.7,
+        score_threshold: Optional[float] = None,  # Ensure score threshold is optional
         collection_name: Optional[str] = None,
         metadata_filter: Optional[Dict[str, Union[str, int, bool]]] = None
     ) -> List[Document]:
@@ -47,35 +47,32 @@ class VectorDatabase:
             if not self._collection_exists(collection):
                 continue
 
-            # Perform thresholded search
+            # Perform search with thresholding (Qdrant client may not support direct thresholding)
             search_results = self.client.search(
                 collection_name=collection,
                 query_vector=query_vector,
                 query_filter=qdrant_filter,
                 limit=k,
-                score_threshold=score_threshold,
             )
 
-            # Convert to LangChain documents with metadata
+            # Apply score threshold manually (Qdrant does not always support direct thresholding)
             docs = [
                 Document(
                     page_content=hit.payload.get("text", ""),
                     metadata=hit.payload.get("metadata", {}) | {"score": hit.score}
                 )
                 for hit in search_results
-                if hit.score >= score_threshold
+                if score_threshold is None or hit.score >= score_threshold  # Manual filtering
             ]
             all_results.extend(docs)
 
         return all_results or [Document(page_content="No relevant documents found")]
 
-    def _collection_exists(self, collection_name: str) -> bool:
+        def _collection_exists(self, collection_name: str) -> bool:
         """Check if a collection exists in the database"""
-        try:
-            self.client.get_collection(collection_name)
-            return True
-        except ValueError:
-            return False
+        collections = self.list_collections()
+        return collection_name in collections
+
 
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Improved document insertion with metadata handling"""
