@@ -18,7 +18,7 @@ MAX_TOKENS = 6000  # Reduced from 8000
 MIN_SIMILARITY = 0.72  # New similarity threshold
 
 # Initialize components
-vector_db = VectorDatabase(persist_directory="db", embedding_model="openai")
+#vector_db = VectorDatabase(persist_directory="db", embedding_model="openai")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 query = st.chat_input("I am Sujay's intelligent assistant. Ask me anything...")
 
