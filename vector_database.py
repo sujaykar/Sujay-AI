@@ -25,8 +25,8 @@ class VectorDatabase:
         self, 
         query: str, 
         k: int = 5, 
-        collection_name: Optional[str] = None,
         score_threshold: float = 0.7,
+        collection_name: Optional[str] = None,
         metadata_filter: Optional[Dict[str, Union[str, int, bool]]] = None
     ) -> List[Document]:
         """Enhanced search with score threshold and metadata filtering"""
