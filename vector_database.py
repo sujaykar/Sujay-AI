@@ -1,49 +1,106 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-import os
-from typing import List, Optional
-import streamlit as st
+from typing import List, Optional, Dict, Union
 from langchain.schema import Document
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams
-from langchain.vectorstores import Qdrant
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
-from qdrant_client.models import Distance, VectorParams, HnswConfig
-
 
 class VectorDatabase:
     def __init__(self, persist_directory: str = "db", embedding_model: str = "openai"):
-        """Initialize the Qdrant vector database.
-
-        Args:
-            persist_directory: Directory to persist the database
-            embedding_model: 'openai' or 'huggingface'
-        """
-        self.persist_directory = persist_directory
-
-        # Create the directory if it doesn't exist
-        os.makedirs(persist_directory, exist_ok=True)
-
-        # Initialize the embedding model
+        self.client = QdrantClient(path=persist_directory)
+        
+        # Initialize embeddings
         if embedding_model == "openai":
             self.embeddings = OpenAIEmbeddings()
         else:
-            self.embeddings = HuggingFaceEmbeddings(
-                model_name="sentence-transformers/all-MiniLM-L6-v2"
+            self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
+    def search(
+        self, 
+        query: str, 
+        k: int = 5, 
+        collection_name: Optional[str] = None,
+        score_threshold: float = 0.7,
+        metadata_filter: Optional[Dict[str, Union[str, int, bool]]] = None
+    ) -> List[Document]:
+        """Enhanced search with score threshold and metadata filtering"""
+        query_vector = self.embeddings.embed_query(query)
+        collections = [collection_name] if collection_name else self.list_collections()
+        all_results = []
+
+        # Build metadata filter
+        qdrant_filter = Filter(
+            must=[
+                FieldCondition(key=key, match=MatchValue(value=value))
+                for key, value in (metadata_filter or {}).items()
+            ]
+        ) if metadata_filter else None
+
+        for collection in collections:
+            # Verify collection exists
+            if not self._collection_exists(collection):
+                continue
+
+            # Perform thresholded search
+            search_results = self.client.search(
+                collection_name=collection,
+                query_vector=query_vector,
+                query_filter=qdrant_filter,
+                limit=k,
+                score_threshold=score_threshold,
             )
 
-        # ✅ Connect to the Qdrant server (using Qdrant Cloud or local server)
-        QDRANT_URL = st.secrets["qdrant"]["url"]
-        QDRANT_API_KEY = st.secrets["qdrant"]["api_key"]
+            # Convert to LangChain documents with metadata
+            docs = [
+                Document(
+                    page_content=hit.payload.get("text", ""),
+                    metadata=hit.payload.get("metadata", {}) | {"score": hit.score}
+                )
+                for hit in search_results
+                if hit.score >= score_threshold
+            ]
+            all_results.extend(docs)
 
-        # Initialize Qdrant client
-        self.client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
+        return all_results or [Document(page_content="No relevant documents found")]
+
+    def _collection_exists(self, collection_name: str) -> bool:
+        """Check if a collection exists in the database"""
+        try:
+            self.client.get_collection(collection_name)
+            return True
+        except ValueError:
+            return False
 
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
-        """Add documents to the vector database."""
-        texts = [doc.page_content for doc in documents]
-        vectors = self.embeddings.embed_documents(texts)
+        """Improved document insertion with metadata handling"""
+        # Create collection if not exists
+        if not self._collection_exists(collection_name):
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=len(self.embeddings.embed_query("test")),  # Get embedding dim
+                    distance=Distance.COSINE
+                )
+            )
+
+        # Prepare documents with metadata
+        points = [
+            {
+                "id": str(hash(doc.page_content + str(doc.metadata))),
+                "vector": self.embeddings.embed_query(doc.page_content),
+                "payload": {
+                    "text": doc.page_content,
+                    "metadata": doc.metadata
+                }
+            }
+            for doc in documents
+        ]
+
+        # Batch upsert
+        self.client.upsert(
+            collection_name=collection_name,
+            points=points,
+            batch_size=100  # Optimized for performance
+        )
 
         # Get the correct vector size (1536 for OpenAI embeddings)
         vector_size = len(vectors[0])  # This should be 1536 for OpenAIEmbeddings
