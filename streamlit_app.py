@@ -146,7 +146,7 @@ def main():
                         {"role": "system", "content": "You are a helpful AI assistant that provides insightful answers."},
                         {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}"}
                     ],
-                    temperature=0.4
+                    temperature=0.7
                 )
                 st.write(response.choices[0].message.content)
 
