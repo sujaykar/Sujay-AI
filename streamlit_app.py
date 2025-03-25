@@ -74,7 +74,7 @@ def retrieve_from_qdrant(query):
     results = vector_db.search(
         query=query,
         k=MAX_VECTOR_DOCS,
-        score_threshold=MIN_SIMILARITY,
+        score_threshold=MIN_SIMILARITY,  # Now properly handled
         metadata_filter=None  # Add metadata filters here if needed
     )
     return "\n\n".join([res.page_content for res in results])
