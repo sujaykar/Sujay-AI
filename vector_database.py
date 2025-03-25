@@ -102,8 +102,7 @@ class VectorDatabase:
         # Batch upsert
         self.client.upsert(
             collection_name=collection_name,
-            points=points,
-            batch_size=100  # Optimized for performance
+            points=points
         )
 
     def list_collections(self) -> List[str]:
