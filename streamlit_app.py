@@ -80,7 +80,6 @@ if query:
                 {"role": "system", "content": "Provide concise, context-based answers."},
                 {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            max_prompt_tokens=6000,
             max_completion_tokens=900
         )
 
