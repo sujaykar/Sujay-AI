@@ -3,6 +3,7 @@ from langchain.schema import Document
 from qdrant_client import QdrantClient
 from qdrant_client.models import Filter, FieldCondition, MatchValue
 from langchain_community.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+import streamlit as st
 
 class VectorDatabase:
     def __init__(self, embedding_model: str = "openai"):
