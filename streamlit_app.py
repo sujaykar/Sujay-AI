@@ -14,7 +14,7 @@ from vector_database import VectorDatabase
 MAX_CHAT_HISTORY = 7  # Reduced from 10
 MAX_DOC_CHARACTERS = 450000  # Reduced from 1M
 MAX_VECTOR_DOCS = 8  # Reduced from 10
-MAX_TOKENS = 6000  # Reduced from 8000
+#MAX_TOKENS = 6000  # Reduced from 8000
 MIN_SIMILARITY = 0.72  # New similarity threshold
 
 # Initialize components
@@ -109,7 +109,7 @@ def main():
                     "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"
                 }
             ],
-            max_tokens=350  # Enforce concise responses
+             max_completion_tokens=350    # Enforce concise responses
         )
 
         # ... (existing display code) ...
