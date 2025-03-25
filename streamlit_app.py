@@ -141,12 +141,12 @@ def main():
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 response = openai_client.chat.completions.create(
-                    model="gpt-3.5-turbo",
+                    model="o3-mini",
                     messages=[
-                        {"role": "system", "content": "You are an AI assistant that provides insightful and concise answers."},
+                        {"role": "system", "content": "You are a helpful AI assistant that provides insightful answers."},
                         {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}"}
                     ],
-                    temperature=0.7
+                    temperature=0.4
                 )
                 st.write(response.choices[0].message.content)
 
