@@ -109,7 +109,7 @@ def main():
                     "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"
                 }
             ],
-            max_tokens=250  # Enforce concise responses
+            max_tokens=350  # Enforce concise responses
         )
 
         # ... (existing display code) ...
