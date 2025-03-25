@@ -2,118 +2,88 @@ import streamlit as st
 import os
 import asyncio
 from langchain.schema import Document
-from langchain_community.embeddings import OpenAIEmbeddings  # Updated import
+from langchain_community.embeddings import OpenAIEmbeddings
 from openai import OpenAI
-from PyPDF2 import PdfReader
-from PIL import Image
-import pytesseract
-import pandas as pd
 from vector_database import VectorDatabase
+from document_processor import DocumentProcessor
+from PIL import Image
 
-# Constants - Updated for cost optimization
-MAX_CHAT_HISTORY = 7  # Reduced from 10
-MAX_DOC_CHARACTERS = 450000  # Reduced from 1M
-MAX_VECTOR_DOCS = 8  # Reduced from 10
-MAX_TOKENS = 6000  # Reduced from 8000
-MIN_SIMILARITY = 0.72  # New similarity threshold
+# --- Constants ---
+MAX_CHAT_HISTORY = 7  
+MAX_DOC_CHARACTERS = 450000  
+MAX_VECTOR_DOCS = 8  
+MAX_TOKENS = 6000  
+MIN_SIMILARITY = 0.72  
 
-# Initialize components
+# --- Initialize Components ---
 vector_db = VectorDatabase(embedding_model="openai")
+document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-query = st.chat_input("I am Sujay's intelligent assistant. Ask me anything...")
 
-# --- New Optimization Functions ---
-def dynamic_reasoning_effort(query: str) -> str:
-    """Determine reasoning effort based on query complexity"""
-    complex_keywords = {"calculate", "analyze", "financial", "derive", "compare", "trend"}
-    simple_keywords = {"summary", "overview", "explain", "what", "who"}
-    
-    query_lower = query.lower()
-    if any(kw in query_lower for kw in complex_keywords):
-        return "high"
-    elif any(kw in query_lower for kw in simple_keywords):
-        return "low"
-    return "medium"
+# --- Streamlit UI ---
+st.set_page_config(
+    page_title="Sujay's AI Assistant",
+    page_icon="🤖",
+    layout="wide"
+)
 
-def optimize_context(context: str, max_tokens: int) -> str:
-    """Reduce context while preserving key information"""
-    sentences = context.split('. ')
-    optimized = []
-    token_count = 0
-    
-    for sent in sentences:
-        sent_tokens = len(sent.split()) + 1  # +1 for the period
-        if token_count + sent_tokens <= max_tokens:
-            optimized.append(sent)
-            token_count += sent_tokens
-        else:
-            break
-            
-    return '. '.join(optimized) + ('' if context.endswith('.') else '.')
+# --- Sidebar Branding ---
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/4712/4712105.png", width=100)
+st.sidebar.title("AI Knowledge Assistant")
+st.sidebar.markdown("Upload files, ask questions, and retrieve insights.")
 
-# --- Modified Functions ---
-def process_uploaded_file(uploaded_file, collection_name):
-    """Optimized file processing with chunking"""
-    # ... (existing file type handling) ...
-    
-    # Split text into optimized chunks
-    chunk_size = 512  # Optimal for o3-mini
-    text_chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
-    
-    # Store chunks with metadata
-    docs = [Document(
-        page_content=chunk,
-        metadata={"source": uploaded_file.name, "chunk_num": i}
-    ) for i, chunk in enumerate(text_chunks)]
-    
-    vector_db.add_documents(docs, collection_name=collection_name)
-    return file_name, text[:MAX_DOC_CHARACTERS]  # Return truncated preview
+# --- File Upload Section ---
+st.sidebar.subheader("📂 Upload Documents")
+uploaded_file = st.sidebar.file_uploader(
+    "Upload a document", type=["pdf", "txt", "png", "jpg", "jpeg", "md", "xlsx", "csv"]
+)
+collection_name = st.sidebar.text_input("Collection Name", "default")
 
+if uploaded_file:
+    with st.spinner("Processing document..."):
+        # Ensure documents are only processed if not in Qdrant
+        if collection_name not in st.session_state:
+            docs = document_processor.process_uploaded_file(uploaded_file)
+            vector_db.add_documents(docs, collection_name)
+            st.session_state[collection_name] = True  # Mark collection as processed
+            st.sidebar.success(f"✅ {uploaded_file.name} added to `{collection_name}` collection!")
+
+# --- Chat UI ---
+st.title("🤖 Sujay's AI Assistant")
+st.write("Ask me anything about the uploaded documents or any topic!")
+
+query = st.chat_input("Ask me anything...")
+
+# --- Query Processing ---
 def retrieve_from_qdrant(query):
-    """Optimized retrieval with similarity filtering"""
+    """Retrieve relevant context from Qdrant."""
     results = vector_db.search(
         query=query,
         k=MAX_VECTOR_DOCS,
-        score_threshold=MIN_SIMILARITY,  # Now properly handled
-        metadata_filter=None  # Add metadata filters here if needed
+        score_threshold=MIN_SIMILARITY,
+        metadata_filter=None
     )
     return "\n\n".join([res.page_content for res in results])
 
-
-# --- Modified Main Logic ---
-def main():
-   
-
-    if query:
-        # --- New: Dynamic Reasoning Effort ---
-        reasoning_level = dynamic_reasoning_effort(query)
-        
-        # --- Optimized Context Handling ---
+if query:
+    with st.spinner("Fetching response..."):
+        # Retrieve relevant context
         retrieved_context = retrieve_from_qdrant(query)
-        combined_context = optimize_context(
-            f"Relevant information:\n{retrieved_context}",
-            max_tokens=MAX_TOKENS//2  # Reserve half tokens for response
-        )
 
-        # --- Cost-Optimized API Call ---
+        # Ensure enough space for model response
+        combined_context = retrieved_context[:MAX_TOKENS - 800]
+
+        # Generate AI response
         response = openai_client.chat.completions.create(
             model="o3-mini",
-            reasoning_effort=reasoning_level,
             messages=[
-                {
-                    "role": "system", 
-                    "content": "Answer concisely using only the context. If unsure, say 'I don't know'."
-                },
-                {
-                    "role": "user",
-                    "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"
-                }
+                {"role": "system", "content": "Provide concise, context-based answers."},
+                {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-             max_prompt_tokens=6000,
-             max_completion_tokens=900    # Enforce concise responses
+            max_prompt_tokens=6000,
+            max_completion_tokens=900
         )
 
-        # ... (existing display code) ...
-
-if __name__ == "__main__":
-    main()
+        # Display response
+        st.write("🤖 **AI Response:**")
+        st.write(response.choices[0].message.content)
