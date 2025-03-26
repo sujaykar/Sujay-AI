@@ -7,6 +7,7 @@ from openai import OpenAI
 from vector_database import VectorDatabase
 from document_processor import DocumentProcessor
 from PIL import Image
+from agentic_assistant import AgenticAssistant  # Importing the agentic framework
 
 # --- Constants ---
 MAX_CHAT_HISTORY = 7  
@@ -19,6 +20,8 @@ MIN_SIMILARITY = 0.72
 vector_db = VectorDatabase(embedding_model="openai")
 document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize the Agentic Assistant with o3-mini model
+agentic_assistant = AgenticAssistant(vector_db, model_name="o3-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
 st.set_page_config(
