@@ -44,9 +44,9 @@ if uploaded_file:
         # Ensure documents are only processed if not in Qdrant
         if collection_name not in st.session_state:
             docs = document_processor.process_uploaded_file(uploaded_file)
-            vector_db.add_documents(docs, collection_name)
-            st.session_state[collection_name] = True  # Mark collection as processed
-            st.sidebar.success(f"✅ {uploaded_file.name} added to `{collection_name}` collection!")
+            vector_db.add_documents(docs, collection_name)  # ✅ Always process new files, even if collection exists
+            st.sidebar.success(f"✅ {uploaded_file.name} added to `{collection_name}`")
+
 
 # --- Chat UI ---
 st.title("🤖 Sujay's AI Assistant")
