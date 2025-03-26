@@ -78,10 +78,10 @@ if query:
         response = openai_client.chat.completions.create(
             model="o3-mini",
             messages=[
-                {"role": "system", "content": "Provide concise, context-based answers."},
+                {"role": "system", "content": "Provide clear context-based answers."},
                 {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            max_completion_tokens=900
+            max_completion_tokens=1200
         )
 
         # Display response
