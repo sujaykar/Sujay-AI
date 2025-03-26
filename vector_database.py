@@ -22,6 +22,10 @@ class VectorDatabase:
         else:
             self.embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
+    def list_collections(self) -> List[str]:
+        """List all collections in Qdrant."""
+        return [collection.name for collection in self.client.get_collections().collections]
+
     def search(
         self, 
         query: str, 
