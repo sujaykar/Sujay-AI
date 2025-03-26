@@ -161,6 +161,68 @@ class AgenticAssistant:
         answers = self.llm.predict(answer_prompt.format(questions=questions))
 
         return f"### Practice Questions:\n{questions}\n\n### Answer Key:\n{answers}"
+        
+        # analyze charts
+         def analyze_charts(self, query: str) -> str:
+        """Analyzes charts and provides insights."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant charts found."
+        
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are a data analyst skilled in visualizations. Analyze the following charts and provide key insights.
+
+        Charts:
+        {context}
+
+        Insights:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+# analyze financial data
+   def analyze_financial_data(self, query: str) -> str:
+        """Analyzes financial reports, stock market trends, and business data."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant financial data found."
+        
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are an expert financial analyst. Review the following financial data and extract key insights.
+
+        Financial Data:
+        {context}
+
+        Analysis and Recommendations:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+
+    def answer_general_query(self, query: str) -> str:
+        """Handles general queries by searching documents and providing answers."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "I couldn't find any relevant information."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+        prompt_template = """
+        Use the provided context to answer the following question.
+
+        Context:
+        {context}
+
+        Question: {query}
+
+        Answer:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "query"])
+        response = self.llm.predict(prompt.format(context=context, query=query))
+        return response
 
     def summarize_document(self, query: str) -> str:
         """Summarizes the document content based on the user's query."""
