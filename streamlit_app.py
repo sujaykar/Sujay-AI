@@ -70,18 +70,22 @@ def retrieve_from_qdrant(query):
     return "\n\n".join([f"[{res.metadata.get('collection', 'unknown')}] {res.page_content}" for res in results])
 
 if query:
-    with st.spinner("Fetching response..."):
-        # Retrieve relevant context
+    with st.spinner("Processing your query..."):
+        # 🔹 Step 1: Retrieve relevant documents from Qdrant
         retrieved_context = retrieve_from_qdrant(query)
 
-        # Ensure enough space for model response
-        combined_context = retrieved_context[:MAX_TOKENS - 800]
+        # 🔹 Step 2: Send query to the correct agent with Qdrant context
+        agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
-        # Generate AI response
+        # 🔹 Step 3: Ensure enough space for model response
+        combined_context = f"{retrieved_context}\n\n{agent_response}"
+        combined_context = combined_context[:MAX_TOKENS - 800]
+
+        # 🔹 Step 4: Generate AI response using o3-mini with combined context
         response = openai_client.chat.completions.create(
             model="o3-mini",
             messages=[
-                {"role": "system", "content": "Provide clear context-based answers."},
+                {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
             ],
             max_completion_tokens=1200
