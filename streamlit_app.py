@@ -10,9 +10,9 @@ from PIL import Image
 from agentic_assistant import AgenticAssistant  # Importing the agentic framework
 
 # --- Constants ---
-MAX_CHAT_HISTORY = 7  
+MAX_CHAT_HISTORY = 10  
 MAX_DOC_CHARACTERS = 450000  
-MAX_VECTOR_DOCS = 8  
+MAX_VECTOR_DOCS = 10  
 MAX_TOKENS = 6000  
 MIN_SIMILARITY = 0.72  
 
@@ -55,7 +55,18 @@ if uploaded_file:
 st.title("🤖 Sujay's AI Assistant")
 st.write("Ask me anything about the uploaded documents or any topic!")
 
-query = st.chat_input("Ask me anything...")
+# Initialize session state for chat history
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+# Display past chat messages
+st.subheader("📜 Chat History (Last 10 messages)")
+for chat in st.session_state.chat_history:
+    st.markdown(f"**User:** {chat['query']}")
+    st.markdown(f"**AI:** {chat['response']}")
+    st.markdown("---")
+
+query = st.chat_input("How can I help you ?Ask me anything...")
 
 # --- Query Processing ---
 def retrieve_from_qdrant(query):
@@ -91,6 +102,11 @@ if query:
             ],
             max_completion_tokens=4000
         )
+
+        # 🔹 Store chat history (limit to last 10 messages)
+        st.session_state.chat_history.append({"query": query, "response": ai_response})
+        if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
+            st.session_state.chat_history.pop(0)  # Keep only the last 10 entries
 
         # Display response
         st.write("🤖 **AI Response:**")
