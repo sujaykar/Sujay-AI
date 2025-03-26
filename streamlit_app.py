@@ -95,7 +95,7 @@ if query:
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            max_completion_tokens=4000
+            max_completion_tokens=4095
         )
 
         ai_response = response.choices[0].message.content  # ✅ Fixed missing assignment
