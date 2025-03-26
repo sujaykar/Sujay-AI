@@ -60,26 +60,35 @@ class VectorDatabase:
             points=points
         )
 
-    def search(self, query: str, k: int = 5, score_threshold: Optional[float] = None, collection_name: Optional[str] = None) -> List[Document]:
-        """Enhanced search with score threshold and metadata filtering."""
-        query_vector = self.embeddings.embed_query(query)
-        collections = [collection_name] if collection_name else self.list_collections()
-        all_results = []
+    def search(self, query: str, k: int = 5, score_threshold: Optional[float] = None, 
+           collection_name: Optional[str] = None, metadata_filter: Optional[Dict] = None) -> List[Document]:
+    """Enhanced search with score threshold and metadata filtering."""
+    query_vector = self.embeddings.embed_query(query)
+    collections = [collection_name] if collection_name else self.list_collections()
+    all_results = []
 
-        for collection in collections:
-            if not self._collection_exists(collection):
-                continue
+    for collection in collections:
+        if not self._collection_exists(collection):
+            continue
 
-            search_results = self.client.search(
-                collection_name=collection,
-                query_vector=query_vector,
-                limit=k
-            )
+        search_params = {
+            "collection_name": collection,
+            "query_vector": query_vector,
+            "limit": k
+        }
+        
+        if metadata_filter:
+            search_params["query_filter"] = Filter(must=[FieldCondition(
+                key=list(metadata_filter.keys())[0],
+                match=MatchValue(value=list(metadata_filter.values())[0])
+            )])
 
-            docs = [Document(page_content=hit.payload.get("text", "")) for hit in search_results]
-            all_results.extend(docs)
+        search_results = self.client.search(**search_params)
 
-        return all_results or [Document(page_content="No relevant documents found.")]
+        docs = [Document(page_content=hit.payload.get("text", "")) for hit in search_results]
+        all_results.extend(docs)
+
+    return all_results or [Document(page_content="No relevant documents found.")]
 
     def delete_collection(self, collection_name: str) -> None:
         """Delete a collection from the database."""
