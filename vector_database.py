@@ -51,7 +51,7 @@ class VectorDatabase:
 
         new_points = []
         for doc in documents:
-            doc_id = abs(hash(doc.page_content + str(doc.metadata))) % (2**31)
+            doc_id = abs(hash(doc.page_content + str(doc.metadata)+collection_name)) % (2**31)
 
             # Skip if the document already exists
             if doc_id in existing_ids:
