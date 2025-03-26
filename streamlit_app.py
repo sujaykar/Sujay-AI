@@ -78,8 +78,9 @@ if query:
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
         # 🔹 Step 3: Ensure enough space for model response
+        
         combined_context = f"{retrieved_context}\n\n{agent_response}"
-        combined_context = combined_context[:MAX_TOKENS - 800]
+
 
         # 🔹 Step 4: Generate AI response using o3-mini with combined context
         response = openai_client.chat.completions.create(
@@ -88,7 +89,7 @@ if query:
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            max_completion_tokens=1200
+            max_completion_tokens=4000
         )
 
         # Display response
