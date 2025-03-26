@@ -128,7 +128,7 @@ class AgenticAssistant:
         context = "\n\n".join([doc.page_content for doc in results])
 
         prompt_template = """
-        You are a highly qualified STEM professor at a premium college. 
+        You are a highly qualified STEM professor at a premium college.  
         Based on the following course material, generate a set of **30-50 practice questions** to test student knowledge.
         
         The questions should cover different levels of difficulty:
@@ -149,7 +149,7 @@ class AgenticAssistant:
         questions = self.llm.predict(prompt.format(context=context))
 
         answer_prompt_template = """
-        You are a highly qualified STEM professor at a premium college. 
+        You are a highly qualified STEM professor at a premium college.  
         Based on the **practice questions** below, generate a **detailed answer key** for each question with explanations.
 
         **Practice Questions:**
@@ -161,9 +161,8 @@ class AgenticAssistant:
         answers = self.llm.predict(answer_prompt.format(questions=questions))
 
         return f"### Practice Questions:\n{questions}\n\n### Answer Key:\n{answers}"
-        
-        # analyze charts
-         def analyze_charts(self, query: str) -> str:
+    
+    def analyze_charts(self, query: str) -> str:
         """Analyzes charts and provides insights."""
         results = self.vector_db.search(query, k=5)
         if not results:
@@ -182,8 +181,8 @@ class AgenticAssistant:
         prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
         response = self.llm.predict(prompt.format(context=context))
         return response
-# analyze financial data
-   def analyze_financial_data(self, query: str) -> str:
+
+    def analyze_financial_data(self, query: str) -> str:
         """Analyzes financial reports, stock market trends, and business data."""
         results = self.vector_db.search(query, k=5)
         if not results:
