@@ -37,7 +37,7 @@ class VectorDatabase:
                 vectors_config=VectorParams(
                     size=len(self.embeddings.embed_query("test")),  # Get embedding dim
                     distance=Distance.COSINE,
-                    hnsw_config=HnswConfig(m=16, ef_construct=200,full_scan_threshold=10000)  # HNSW Configuration
+                    hnsw_config={"m": 16, "ef_construct": 200, "full_scan_threshold": 10000}   # HNSW Configuration
                 )
             )
 
