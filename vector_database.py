@@ -58,7 +58,7 @@ class VectorDatabase:
 
             new_points.append(PointStruct(
                 id=doc_id,
-                vector=self.embeddings.embed_query(doc.page_content),
+                vector=list(self.embeddings.embed_query(doc.page_content)),
                 payload={
                     "text": doc.page_content,
                     "metadata": doc.metadata
