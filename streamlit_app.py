@@ -1,12 +1,9 @@
 import streamlit as st
 import os
-import asyncio
 from langchain.schema import Document
-from langchain_community.embeddings import OpenAIEmbeddings
 from openai import OpenAI
 from vector_database import VectorDatabase
 from document_processor import DocumentProcessor
-from PIL import Image
 from agentic_assistant import AgenticAssistant  # Importing the agentic framework
 
 # --- Constants ---
@@ -66,7 +63,7 @@ for chat in st.session_state.chat_history:
     st.markdown(f"**AI:** {chat['response']}")
     st.markdown("---")
 
-query = st.chat_input("How can I help you ?Ask me anything...")
+query = st.chat_input("How can I help you? Ask me anything...")
 
 # --- Query Processing ---
 def retrieve_from_qdrant(query):
@@ -89,9 +86,7 @@ if query:
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
         # 🔹 Step 3: Ensure enough space for model response
-        
         combined_context = f"{retrieved_context}\n\n{agent_response}"
-
 
         # 🔹 Step 4: Generate AI response using o3-mini with combined context
         response = openai_client.chat.completions.create(
@@ -103,6 +98,8 @@ if query:
             max_completion_tokens=4000
         )
 
+        ai_response = response.choices[0].message.content  # ✅ Fixed missing assignment
+
         # 🔹 Store chat history (limit to last 10 messages)
         st.session_state.chat_history.append({"query": query, "response": ai_response})
         if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
@@ -110,4 +107,4 @@ if query:
 
         # Display response
         st.write("🤖 **AI Response:**")
-        st.write(response.choices[0].message.content)
+        st.write(ai_response)
