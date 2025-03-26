@@ -30,17 +30,16 @@ class VectorDatabase:
         return collection_name in self.list_collections()
 
     def create_collection_if_not_exists(self, collection_name: str) -> None:
-    """Ensure the collection exists before inserting documents."""
-    if not self._collection_exists(collection_name):
-        self.client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=len(self.embeddings.embed_query("test")),  # Get embedding dim
-                distance=Distance.COSINE,
-                hnsw_config={"m": 16, "ef_construct": 200, "full_scan_threshold": 10000}  # HNSW Configuration
+        """Ensure the collection exists before inserting documents."""
+        if not self._collection_exists(collection_name):
+            self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=len(self.embeddings.embed_query("test")),  # Get embedding dim
+                    distance=Distance.COSINE,
+                    hnsw_config={"m": 16, "ef_construct": 200, "full_scan_threshold": 10000}  # HNSW Configuration
+                )
             )
-        )
-
 
     def add_documents(self, documents: List[Document], collection_name: str = "default") -> None:
         """Insert multiple documents into the same collection without overwriting existing data."""
