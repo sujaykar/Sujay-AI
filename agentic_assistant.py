@@ -117,13 +117,13 @@ class AgenticAssistant:
             return f"Error: {str(e)}"
 
     def generate_practice_questions(self, query: str) -> str:
-    """Generates 30-50 practice questions based on a specific topic, module, or chapter from course material."""
-    
-    # ✅ Ensure search includes all collections
-    results = self.vector_db.search(query, k=10, collection_name=None)
+        """Generates 30-50 practice questions based on a specific topic, module, or chapter from course material."""
+        
+        # ✅ Ensure search includes all collections
+        results = self.vector_db.search(query, k=10, collection_name=None)
 
-    if not results or results[0].page_content == "No relevant documents found.":
-        return "No relevant course materials found."
+        if not results or results[0].page_content == "No relevant documents found.":
+            return "No relevant course materials found."
 
         context = "\n\n".join([doc.page_content for doc in results])
 
