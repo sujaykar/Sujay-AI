@@ -44,7 +44,7 @@ class VectorDatabase:
         # ✅ Prepare documents in correct PointStruct format
         points = [
             PointStruct(
-                id=str(abs(hash(doc.page_content + str(doc.metadata)))),
+                id=abs(hash(doc.page_content + str(doc.metadata))) % (2**31),
                 vector=self.embeddings.embed_query(doc.page_content),
                 payload={
                     "text": doc.page_content,
