@@ -46,7 +46,8 @@ class VectorDatabase:
         self.create_collection_if_not_exists(collection_name)
 
         # ✅ Fetch existing IDs to prevent duplicate entries
-        existing_ids = {point.id for point in self.client.scroll(collection_name, limit=10_000).points}
+        existing_points, _ = self.client.scroll(collection_name, limit=10_000)  # ✅ Extract only the points list
+        existing_ids = {point.id for point in existing_points}  # ✅ Iterate correctly
 
         new_points = []
         for doc in documents:
