@@ -61,36 +61,57 @@ class VectorDatabase:
         )
 
     def search(
-        self, query: str, k: int = 5, score_threshold: Optional[float] = None, 
-        collection_name: Optional[str] = None, metadata_filter: Optional[Dict] = None
-    ) -> List[Document]:
-        """Enhanced search with score threshold and metadata filtering."""
-        query_vector = self.embeddings.embed_query(query)
-        collections = [collection_name] if collection_name else self.list_collections()
-        all_results = []
+    self, query: str, k: int = 5, score_threshold: Optional[float] = None, 
+    collection_name: Optional[str] = None, metadata_filter: Optional[Dict] = None
+) -> List[Document]:
+    """Enhanced search with score threshold and dynamic collection ranking."""
 
-        for collection in collections:
-            if not self._collection_exists(collection):
-                continue
+    query_vector = self.embeddings.embed_query(query)
+    collections = [collection_name] if collection_name else self.list_collections()
+    collection_scores = {}  # Stores relevance scores for each collection
+    all_results = []
 
-            search_params = {
-                "collection_name": collection,
-                "query_vector": query_vector,
-                "limit": k
-            }
+    # Step 1: Identify the most relevant collections (Optional)
+    for collection in collections:
+        if not self._collection_exists(collection):
+            continue
 
-            if metadata_filter:
-                search_params["query_filter"] = Filter(must=[FieldCondition(
-                    key=list(metadata_filter.keys())[0],
-                    match=MatchValue(value=list(metadata_filter.values())[0])
-                )])
+        # Perform a lightweight test search in each collection
+        temp_results = self.client.search(
+            collection_name=collection,
+            query_vector=query_vector,
+            limit=1  # Only get one result per collection for ranking
+        )
 
-            search_results = self.client.search(**search_params)
+        if temp_results:
+            # Use the highest similarity score from the result
+            collection_scores[collection] = temp_results[0].score
 
-            docs = [Document(page_content=hit.payload.get("text", "")) for hit in search_results]
-            all_results.extend(docs)
+    # Step 2: Sort collections by relevance (high to low)
+    ranked_collections = sorted(collection_scores.keys(), key=lambda c: collection_scores[c], reverse=True)
 
-        return all_results or [Document(page_content="No relevant documents found.")]
+    # Step 3: Perform actual retrieval from the top-ranked collections
+    for collection in ranked_collections:
+        search_params = {
+            "collection_name": collection,
+            "query_vector": query_vector,
+            "limit": k
+        }
+
+        if metadata_filter:
+            search_params["query_filter"] = Filter(must=[FieldCondition(
+                key=list(metadata_filter.keys())[0],
+                match=MatchValue(value=list(metadata_filter.values())[0])
+            )])
+
+        search_results = self.client.search(**search_params)
+
+        docs = [Document(page_content=hit.payload.get("text", ""), metadata={"collection": collection}) 
+                for hit in search_results]
+        all_results.extend(docs)
+
+    # Step 4: Return results sorted by relevance across collections
+    return sorted(all_results, key=lambda d: len(d.page_content), reverse=True) or [Document(page_content="No relevant documents found.")]
 
     def delete_collection(self, collection_name: str) -> None:
         """Delete a collection from the database."""
