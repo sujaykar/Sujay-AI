@@ -56,13 +56,15 @@ query = st.chat_input("Ask me anything...")
 
 # --- Query Processing ---
 def retrieve_from_qdrant(query):
-    """Retrieve relevant context from Qdrant."""
+    """Retrieve relevant context from Qdrant by dynamically selecting the best collections."""
+    
     results = vector_db.search(
         query=query,
         k=MAX_VECTOR_DOCS,
         score_threshold=MIN_SIMILARITY
     )
-    return "\n\n".join([res.page_content for res in results])
+
+    return "\n\n".join([f"[{res.metadata.get('collection', 'unknown')}] {res.page_content}" for res in results])
 
 if query:
     with st.spinner("Fetching response..."):
