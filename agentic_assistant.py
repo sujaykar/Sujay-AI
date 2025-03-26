@@ -16,7 +16,7 @@ import pandas as pd
 import plotly.express as px
 
 class AgenticAssistant:
-    def __init__(self, vector_db, model_name="03-mini", temperature=0.4, api_key=None):
+    def __init__(self, vector_db, model_name="03-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
         self.vector_db = vector_db
         self.model_name = model_name
         self.temperature = temperature
