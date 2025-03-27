@@ -128,39 +128,66 @@ class AgenticAssistant:
         context = "\n\n".join([doc.page_content for doc in results])
 
         prompt_template = """
-        You are a highly qualified STEM professor at a premium college.  
-        Based on the following course material, generate a set of **30-50 practice questions** to test student knowledge.
-        
-        The questions should cover different levels of difficulty:
-        - **Easy:** Basic concept recall.
-        - **Medium:** Application-based problems.
-        - **Hard:** Advanced problem-solving.
+You are a **highly qualified STEM professor** at a top-tier university. Your role is to **help students learn and master core STEM concepts** through both **active learning and practice testing**.
 
-        Additionally, provide a **separate answer key** with detailed explanations.
+### **Your Teaching Approach:**
+1️⃣ **Concept Mastery:** Before testing, **engage the student** by helping them synthesize or explain key topics in their own words.  
+2️⃣ **Practice Questions:** Create **30-50 practice questions** covering different difficulty levels:
+   - **Easy:** Recall-based fundamental concepts.
+   - **Medium:** Application-based problems.
+   - **Hard:** Advanced problem-solving and real-world scenarios.  
+3️⃣ **Interactive Learning:** If the student struggles with a topic, **break it down step-by-step** with examples before generating practice questions.  
+4️⃣ **Answer Key & Explanations:** Provide **detailed solutions** with **clear, step-by-step explanations**.  
 
-        **Course Material:**
-        {context}
+---
 
-        **Practice Questions:**
-        """
+### **Student’s Course Material:**
+{context}
 
-        # Generate questions
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
-        questions = self.llm.predict(prompt.format(context=context))
+---
 
-        answer_prompt_template = """
-        You are a highly qualified STEM professor at a premium college.  
-        Based on the **practice questions** below, generate a **detailed answer key** for each question with explanations.
+### **Step 1: Learning & Concept Synthesis**
+Before we generate questions, **help the student deeply understand the material**.  
+- Identify key concepts in the course material and prompt the student to explain them in their own words.  
+- If the student struggles, guide them with **clarifications and analogies**.
 
-        **Practice Questions:**
-        {questions}
+---
 
-        **Answer Key:**
-        """
-        answer_prompt = PromptTemplate(template=answer_prompt_template, input_variables=["questions"])
-        answers = self.llm.predict(answer_prompt.format(questions=questions))
+### **Step 2: Practice Questions**
+Now, based on the course material, generate a **set of 30-50 practice questions**.
 
-        return f"### Practice Questions:\n{questions}\n\n### Answer Key:\n{answers}"
+**Practice Questions:**
+"""
+
+# Generate questions
+prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+questions = self.llm.predict(prompt.format(context=context))
+
+answer_prompt_template = """
+You are a **highly qualified STEM professor** at a top-tier university.  
+Your role is to provide **detailed answers with explanations** for the student's practice questions.
+
+---
+
+### **Practice Questions:**
+{questions}
+
+---
+
+### **Step 3: Answer Key & Explanations**
+For each question, provide:
+- **A correct and detailed answer**
+- **A step-by-step explanation** for why this is the correct answer.
+- **Alternative approaches (if applicable)** to deepen understanding.
+
+**Answer Key:**
+"""
+
+answer_prompt = PromptTemplate(template=answer_prompt_template, input_variables=["questions"])
+answers = self.llm.predict(answer_prompt.format(questions=questions))
+
+return f"### Practice Questions:\n{questions}\n\n### Answer Key:\n{answers}"
+
     
     def analyze_charts(self, query: str) -> str:
         """Analyzes charts and provides insights."""
