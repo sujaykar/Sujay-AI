@@ -10,13 +10,21 @@ from agentic_assistant import AgenticAssistant  # Importing the agentic framewor
 MAX_CHAT_HISTORY = 10  
 MAX_DOC_CHARACTERS = 450000  
 MAX_VECTOR_DOCS = 10  
-MAX_TOKENS = 6000  
+MAX_TOKENS = 5000  
 MIN_SIMILARITY = 0.72  
+
+# --- Reasoning Effort Mapping ---
+REASONING_EFFORT = {
+    "low": {"temperature": 0.3, "max_tokens": 1024},
+    "medium": {"temperature": 0.6, "max_tokens": 2048},
+    "high": {"temperature": 0.9, "max_tokens": 4095}
+}
 
 # --- Initialize Components ---
 vector_db = VectorDatabase(embedding_model="openai")
 document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 # Initialize the Agentic Assistant with o3-mini model
 agentic_assistant = AgenticAssistant(vector_db, model_name="o3-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -41,12 +49,9 @@ collection_name = st.sidebar.text_input("Collection Name", "default")
 
 if uploaded_file:
     with st.spinner("Processing document..."):
-        # Ensure documents are only processed if not in Qdrant
-        if collection_name not in st.session_state:
-            docs = document_processor.process_uploaded_file(uploaded_file)
-            vector_db.add_documents(docs, collection_name)  # ✅ Always process new files, even if collection exists
-            st.sidebar.success(f"✅ {uploaded_file.name} added to `{collection_name}`")
-
+        docs = document_processor.process_uploaded_file(uploaded_file)
+        vector_db.add_documents(docs, collection_name)  # ✅ Always process new files, even if collection exists
+        st.sidebar.success(f"✅ {uploaded_file.name} added to `{collection_name}`")
 
 # --- Chat UI ---
 st.title("🤖 Sujay's AI Assistant")
@@ -56,46 +61,54 @@ st.write("Ask me anything about the uploaded documents or any topic!")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Display past chat messages
-st.subheader("📜 Chat History (Last 10 messages)")
+# Display past chat messages with better formatting
+st.subheader("📜 Chat History")
 for chat in st.session_state.chat_history:
-    st.markdown(f"**User:** {chat['query']}")
-    st.markdown(f"**AI:** {chat['response']}")
-    st.markdown("---")
+    with st.expander(f"📌 **User:** {chat['query']}"):
+        st.markdown(f"**🤖 AI:** {chat['response']}")
 
 query = st.chat_input("How can I help you? Ask me anything...")
 
 # --- Query Processing ---
 def retrieve_from_qdrant(query):
     """Retrieve relevant context from Qdrant by dynamically selecting the best collections."""
-    
     results = vector_db.search(
         query=query,
         k=MAX_VECTOR_DOCS,
         score_threshold=MIN_SIMILARITY
     )
-
     return "\n\n".join([f"[{res.metadata.get('collection', 'unknown')}] {res.page_content}" for res in results])
+
+def determine_reasoning_effort(query):
+    """Determine the reasoning effort level based on query complexity."""
+    if len(query.split()) < 8:  # Simple queries
+        return "low"
+    elif "explain" in query.lower() or "analyze" in query.lower():  # Requires deeper reasoning
+        return "high"
+    return "medium"
 
 if query:
     with st.spinner("Processing your query..."):
         # 🔹 Step 1: Retrieve relevant documents from Qdrant
         retrieved_context = retrieve_from_qdrant(query)
 
-        # 🔹 Step 2: Send query to the correct agent with Qdrant context
+        # 🔹 Step 2: Determine reasoning effort
+        reasoning_level = determine_reasoning_effort(query)
+        st.sidebar.info(f"🔍 Using **{reasoning_level.upper()}** reasoning effort.")
+
+        # 🔹 Step 3: Send query to the correct agent with Qdrant context
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
-        # 🔹 Step 3: Ensure enough space for model response
-        combined_context = f"{retrieved_context}\n\n{agent_response}"
-
-        # 🔹 Step 4: Generate AI response using o3-mini with combined context
+        # 🔹 Step 4: Generate AI response using o3-mini with proper reasoning effort
+        model_params = REASONING_EFFORT[reasoning_level]
         response = openai_client.chat.completions.create(
             model="o3-mini",
             messages=[
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
-                {"role": "user", "content": f"Context: {combined_context}\n\nQuestion: {query}\nAnswer:"}
+                {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            max_completion_tokens=4095
+            temperature=model_params["temperature"],
+            max_completion_tokens=model_params["max_tokens"]
         )
 
         ai_response = response.choices[0].message.content  # ✅ Fixed missing assignment
