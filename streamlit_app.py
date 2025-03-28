@@ -100,18 +100,25 @@ if query:
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
         # 🔹 Step 4: Generate AI response using o3-mini with proper reasoning effort
-        model_params = REASONING_EFFORT[reasoning_level]
-        response = openai_client.chat.completions.create(
-            model="o3-mini",
-            messages=[
-                {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
-                {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
-            ],
-            temperature=model_params["temperature"],
-            max_completion_tokens=model_params["max_tokens"]
-        )
+model_params = REASONING_EFFORT[reasoning_level]
 
-        ai_response = response.choices[0].message.content  # ✅ Fixed missing assignment
+# ✅ Construct request payload dynamically, excluding `temperature` if using o3-mini
+request_payload = {
+    "model": "o3-mini",
+    "messages": [
+        {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
+        {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
+    ],
+    "max_completion_tokens": model_params["max_tokens"]
+}
+
+# ✅ Add temperature ONLY if the model is not "o3-mini"
+if "o3-mini" not in request_payload["model"]:
+    request_payload["temperature"] = model_params["temperature"]
+
+response = openai_client.chat.completions.create(**request_payload)
+
+ai_response = response.choices[0].message.content  # ✅ Fixed missing assignment
 
         # 🔹 Store chat history (limit to last 10 messages)
         st.session_state.chat_history.append({"query": query, "response": ai_response})
