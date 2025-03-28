@@ -26,7 +26,7 @@ document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Initialize the Agentic Assistant with o3-mini model
-agentic_assistant = AgenticAssistant(vector_db, model_name="o3-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY"))
+agentic_assistant = AgenticAssistant(vector_db, model_name="o3-mini", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
 st.set_page_config(
