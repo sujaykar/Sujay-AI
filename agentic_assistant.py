@@ -87,4 +87,136 @@ class AgenticAssistant:
         2. "chart_analysis" - if the query is about analyzing a chart or visualization.
         3. "financial_analysis" - if the query is about financial reports, stock trends, or market insights.
         4. "general_qa" - if the query is a general question.
-        5. "
+        5. "practice_questions" - if the query asks for practice questions on a topic.
+
+        Query: "{query}"
+        Output ONLY the category as a string.
+        """
+        
+        response = self.llm.predict(classification_prompt)
+        return response.strip().lower()
+
+    def run(self, query: str) -> str:
+        """Routes the query to the appropriate expert agent based on classification."""
+        try:
+            category = self.classify_query(query)
+
+            if category == "document_summarization":
+                return self.summarize_document(query)
+            elif category == "chart_analysis":
+                return self.analyze_charts(query)
+            elif category == "financial_analysis":
+                return self.analyze_financial_data(query)
+            elif category == "general_qa":
+                return self.answer_general_query(query)
+            elif category == "practice_questions":
+                return self.generate_practice_questions(query)
+            else:
+                return "I'm not sure how to categorize your request. Can you clarify?"
+
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def generate_practice_questions(self, query: str) -> str:
+        """Generates 30-50 practice questions based on a specific topic, module, or chapter from course material."""
+        results = self.vector_db.search(query, k=10, collection_name=None)
+
+        if not results or results[0].page_content == "No relevant documents found.":
+            return "No relevant course materials found."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are a highly qualified STEM professor at a top-tier university.
+        Generate 30-50 practice questions across different difficulty levels (Easy, Medium, Hard) based on the course material.
+
+        Course Material:
+        {context}
+
+        Practice Questions:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        questions = self.llm.predict(prompt.format(context=context))
+        return questions
+
+    def analyze_charts(self, query: str) -> str:
+        """Analyzes charts and provides insights."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant charts found."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are a data analyst skilled in visualizations. Analyze the following charts and provide key insights.
+
+        Charts:
+        {context}
+
+        Insights:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+
+    def analyze_financial_data(self, query: str) -> str:
+        """Analyzes financial reports, stock market trends, and business data."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant financial data found."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are an expert financial analyst. Review the following financial data and extract key insights.
+
+        Financial Data:
+        {context}
+
+        Analysis and Recommendations:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+
+    def answer_general_query(self, query: str) -> str:
+        """Handles general queries by searching documents and providing answers."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "I couldn't find any relevant information."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        Use the provided context to answer the following question.
+
+        Context:
+        {context}
+
+        Question: {query}
+
+        Answer:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "query"])
+        response = self.llm.predict(prompt.format(context=context, query=query))
+        return response
+
+    def summarize_document(self, query: str) -> str:
+        """Summarizes the document content based on the user's query."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant documents found."
+
+        context = "\n\n".join([doc.page_content for doc in results])
+
+        prompt_template = """
+        You are an expert document summarizer. Read the following document and summarize the key points concisely.
+
+        Document:
+        {context}
+
+        Summary:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
