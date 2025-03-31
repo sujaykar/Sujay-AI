@@ -63,7 +63,7 @@ if "chat_history" not in st.session_state:
 
 # Display past chat messages with better formatting
 st.subheader("📜 Chat History")
-for chat in st.session_state.chat_history:
+for chat in st.session_state.chat_history[-MAX_CHAT_HISTORY:]:
     with st.expander(f"📌 **User:** {chat['query']}"):
         st.markdown(f"**🤖 AI:** {chat['response']}")
 
