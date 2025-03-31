@@ -56,6 +56,11 @@ class AgenticAssistant:
                 description="Summarizes key points from a document. Input should be a query about a document."
             ),
             Tool(
+                name="Career Coach",
+                func=self.career_coach,
+                description="Analyzes job descriptions and resumes, identifies skill gaps, and provides interview preparation guidance."
+            ),
+            Tool(
                 name="Chart Analysis",
                 func=self.analyze_charts,
                 description="Analyzes charts or graphs and extracts insights. Input should be a query about a chart or dataset."
@@ -220,3 +225,24 @@ class AgenticAssistant:
         prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
         response = self.llm.predict(prompt.format(context=context))
         return response
+
+    def career_coach(self, query: str) -> str:
+        """Analyzes job descriptions and resumes, identifies skill gaps, and provides interview preparation."""
+        results = self.vector_db.search(query, k=5)
+        if not results:
+            return "No relevant job descriptions or resumes found."
+        
+        context = "\n\n".join([doc.page_content for doc in results])
+        
+        prompt_template = """
+        You are an expert Career Coach. Based on the following job description and resume, analyze the candidate's fit, highlight skill gaps, and provide interview preparation guidance.
+
+        Job Description and Resume:
+        {context}
+
+        Analysis and Recommendations:
+        """
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+        response = self.llm.predict(prompt.format(context=context))
+        return response
+
