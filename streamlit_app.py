@@ -15,9 +15,9 @@ MIN_SIMILARITY = 0.72
 
 # --- Reasoning Effort Mapping ---
 REASONING_EFFORT = {
-    "low": {"temperature": 0.3, "max_tokens": 2048},
-    "medium": {"temperature": 0.6, "max_tokens": 4096},
-    "high": {"temperature": 0.9, "max_tokens": 4096}  # GPT-4o limit
+    "low": {"temperature": 0.3, "max_tokens": 4096},
+    "medium": {"temperature": 0.6, "max_tokens": 8192},
+    "high": {"temperature": 0.9, "max_tokens": 16384}  # GPT-4o limit
 }
 
 # --- Initialize Components ---
