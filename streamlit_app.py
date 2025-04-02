@@ -10,14 +10,14 @@ from agentic_assistant import AgenticAssistant  # Importing the agentic framewor
 MAX_CHAT_HISTORY = 10  
 MAX_DOC_CHARACTERS = 550000  
 MAX_VECTOR_DOCS = 15 
-MAX_TOKENS = 9000  
+MAX_TOKENS = 9000  # Adjusted for GPT-4o
 MIN_SIMILARITY = 0.72  
 
 # --- Reasoning Effort Mapping ---
 REASONING_EFFORT = {
     "low": {"temperature": 0.3, "max_tokens": 2048},
     "medium": {"temperature": 0.6, "max_tokens": 4096},
-    "high": {"temperature": 0.9, "max_tokens": 8192}
+    "high": {"temperature": 0.9, "max_tokens": 4096}  # GPT-4o limit
 }
 
 # --- Initialize Components ---
@@ -25,8 +25,8 @@ vector_db = VectorDatabase(embedding_model="openai")
 document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Initialize the Agentic Assistant with o3-medium model
-agentic_assistant = AgenticAssistant(vector_db, model_name="o3-medium", api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize the Agentic Assistant with GPT-4o model
+agentic_assistant = AgenticAssistant(vector_db, model_name="gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
 st.set_page_config(
@@ -99,23 +99,18 @@ if query:
         # 🔹 Step 3: Send query to the correct agent with Qdrant context
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
-        # 🔹 Step 4: Generate AI response using o3-medium with proper reasoning effort
+        # 🔹 Step 4: Generate AI response using GPT-4o with proper reasoning effort
         model_params = REASONING_EFFORT[reasoning_level]
 
-        # ✅ Construct request payload dynamically, excluding `temperature` if using o3-mini
         request_payload = {
-            "model": "o3-medium",
+            "model": "gpt-4o",
             "messages": [
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            "max_completion_tokens": model_params["max_tokens"],
-            "temperature": model_params["temperature"] 
+            "max_tokens": model_params["max_tokens"],
+            "temperature": model_params["temperature"]
         }
-
-        # ✅ Add temperature ONLY if the model is not "o3-mini"
-        if request_payload["model"] != "o3-medium":
-            request_payload["temperature"] = model_params["temperature"]
 
         response = openai_client.chat.completions.create(**request_payload)
 
