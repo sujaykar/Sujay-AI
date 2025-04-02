@@ -8,16 +8,16 @@ from agentic_assistant import AgenticAssistant  # Importing the agentic framewor
 
 # --- Constants ---
 MAX_CHAT_HISTORY = 10  
-MAX_DOC_CHARACTERS = 450000  
+MAX_DOC_CHARACTERS = 550000  
 MAX_VECTOR_DOCS = 10  
-MAX_TOKENS = 5000  
+MAX_TOKENS = 9000  
 MIN_SIMILARITY = 0.72  
 
 # --- Reasoning Effort Mapping ---
 REASONING_EFFORT = {
-    "low": {"temperature": 0.3, "max_tokens": 1024},
-    "medium": {"temperature": 0.6, "max_tokens": 2048},
-    "high": {"temperature": 0.9, "max_tokens": 4095}
+    "low": {"temperature": 0.3, "max_tokens": 2048},
+    "medium": {"temperature": 0.6, "max_tokens": 4096},
+    "high": {"temperature": 0.9, "max_tokens": 8192}
 }
 
 # --- Initialize Components ---
@@ -26,7 +26,7 @@ document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Initialize the Agentic Assistant with o3-mini model
-agentic_assistant = AgenticAssistant(vector_db, model_name="o3-mini", api_key=os.getenv("OPENAI_API_KEY"))
+agentic_assistant = AgenticAssistant(vector_db, model_name="o3-medium", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
 st.set_page_config(
@@ -109,7 +109,8 @@ if query:
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
             ],
-            "max_completion_tokens": model_params["max_tokens"]
+            "max_completion_tokens": model_params["max_tokens"],
+            "temperature": model_params["temperature"] 
         }
 
         # ✅ Add temperature ONLY if the model is not "o3-mini"
