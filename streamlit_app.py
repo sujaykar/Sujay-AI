@@ -25,7 +25,7 @@ vector_db = VectorDatabase(embedding_model="openai")
 document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Initialize the Agentic Assistant with o3-mini model
+# Initialize the Agentic Assistant with o3-medium model
 agentic_assistant = AgenticAssistant(vector_db, model_name="o3-medium", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
@@ -99,12 +99,12 @@ if query:
         # 🔹 Step 3: Send query to the correct agent with Qdrant context
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
-        # 🔹 Step 4: Generate AI response using o3-mini with proper reasoning effort
+        # 🔹 Step 4: Generate AI response using o3-medium with proper reasoning effort
         model_params = REASONING_EFFORT[reasoning_level]
 
         # ✅ Construct request payload dynamically, excluding `temperature` if using o3-mini
         request_payload = {
-            "model": "o3-mini",
+            "model": "o3-medium",
             "messages": [
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
@@ -114,7 +114,7 @@ if query:
         }
 
         # ✅ Add temperature ONLY if the model is not "o3-mini"
-        if request_payload["model"] != "o3-mini":
+        if request_payload["model"] != "o3-medium":
             request_payload["temperature"] = model_params["temperature"]
 
         response = openai_client.chat.completions.create(**request_payload)
