@@ -9,7 +9,7 @@ from agentic_assistant import AgenticAssistant  # Importing the agentic framewor
 # --- Constants ---
 MAX_CHAT_HISTORY = 10  
 MAX_DOC_CHARACTERS = 550000  
-MAX_VECTOR_DOCS = 10  
+MAX_VECTOR_DOCS = 15 
 MAX_TOKENS = 9000  
 MIN_SIMILARITY = 0.72  
 
