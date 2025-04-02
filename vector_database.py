@@ -37,7 +37,7 @@ class VectorDatabase:
                 vectors_config=VectorParams(
                     size=len(self.embeddings.embed_query("test")),  # Get embedding dim
                     distance=Distance.COSINE,
-                    hnsw_config={"m": 16, "ef_construct": 200, "full_scan_threshold": 10000}  # HNSW Configuration
+                    hnsw_config={"m": 32, "ef_construct": 400, "full_scan_threshold": 50000}  # HNSW Configuration
                 )
             )
 
@@ -46,7 +46,7 @@ class VectorDatabase:
         self.create_collection_if_not_exists(collection_name)
 
         # ✅ Fetch existing IDs to prevent duplicate entries
-        existing_points, _ = self.client.scroll(collection_name, limit=10_000)  # ✅ Extract only the points list
+        existing_points, _ = self.client.scroll(collection_name, limit=50_000)  # ✅ Extract only the points list
         existing_ids = {point.id for point in existing_points}  # ✅ Iterate correctly
 
         new_points = []
