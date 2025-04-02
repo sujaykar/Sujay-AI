@@ -14,6 +14,11 @@ from langchain.memory import ConversationBufferMemory
 import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
+from pptx import Presentation
+from pptx.util import Inches
+from PIL import Image
+import requests
+from io import BytesIO
 
 class AgenticAssistant:
     def __init__(self, vector_db, model_name="o3-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
@@ -79,7 +84,12 @@ class AgenticAssistant:
                 name="STEM Professor - Practice Questions",
                 func=self.generate_practice_questions,
                 description="Reads course material and generates practice questions for students to test their knowledge."
-            )
+            ),
+            Tool(
+            name="PowerPoint Generator with DALL·E",
+            func=self.generate_presentation,
+            description="Creates a PowerPoint presentation with AI-generated images and text based on the user's query or relevant database content."
+        )
         ]
         return tools
 
@@ -245,4 +255,115 @@ class AgenticAssistant:
         prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
         response = self.llm.predict(prompt.format(context=context))
         return response
+        
+
+        def generate_presentation(self, query: str, num_slides: int = 5, use_vector_db: bool = False) -> str:
+        """Generates a PowerPoint presentation based on a user query or vector database content."""
+        
+        # Retrieve relevant content from vector database if specified
+        if use_vector_db:
+            results = self.vector_db.search(query, k=5)
+            if not results or results[0].page_content == "No relevant documents found.":
+                return "No relevant documents found in the vector database."
+            context = "\n\n".join([doc.page_content for doc in results])
+        else:
+            context = query  # Use user-provided content if no vector search
+
+        # Define structured prompt
+        prompt_template = """
+        You are an expert presentation designer. Create a structured PowerPoint presentation outline.
+        Ensure the outline contains {num_slides} slides with:
+        - Slide titles
+        - Bullet points summarizing key ideas
+        - Suggestions for visuals
+        
+        Content Reference:
+        {context}
+        
+        Provide output in the following format:
+        Slide 1 Title: <title>
+        - <bullet point 1>
+        - <bullet point 2>
+        
+        Slide 2 Title: <title>
+        - <bullet point 1>
+        - <bullet point 2>
+        """
+        
+        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "num_slides"])
+        response = self.llm.predict(prompt.format(context=context, num_slides=num_slides))
+        
+        # Parse response into slides
+        slides = self._parse_slides(response)
+        
+        # Create PowerPoint file
+        ppt_path = self._create_pptx(query, slides)
+        
+        return ppt_path
+    
+    def _parse_slides(self, response: str) -> List[Dict[str, List[str]]]:
+        """Parses the AI-generated response into a structured slide format."""
+        slides = []
+        lines = response.split("\n")
+        current_slide = None
+        
+        for line in lines:
+            if line.startswith("Slide"):
+                if current_slide:
+                    slides.append(current_slide)
+                current_slide = {"title": line.split(": ")[1], "content": []}
+            elif line.startswith("-"):
+                if current_slide:
+                    current_slide["content"].append(line.strip("- "))
+        
+        if current_slide:
+            slides.append(current_slide)
+        
+        return slides
+    
+    def _create_pptx(self, topic: str, slides: List[Dict[str, List[str]]]) -> str:
+        """Creates a PowerPoint file from the AI-generated slides."""
+        prs = Presentation()
+        
+        for slide_data in slides:
+            slide_layout = prs.slide_layouts[1]  # Title and Content layout
+            slide = prs.slides.add_slide(slide_layout)
+            title = slide.shapes.title
+            content = slide.placeholders[1]
+            
+            title.text = slide_data["title"]
+            content.text = "\n".join(slide_data["content"])
+            
+            # Generate an image for the slide using DALL·E
+            image_path = self._generate_slide_image(slide_data["title"])
+            if image_path:
+                left = Inches(5)
+                top = Inches(2)
+                slide.shapes.add_picture(image_path, left, top, width=Inches(4))
+        
+        ppt_path = f"{topic.replace(' ', '_')}.pptx"
+        prs.save(ppt_path)
+        return ppt_path
+    
+    def _generate_slide_image(self, description: str) -> Optional[str]:
+        """Generates an image using DALL·E based on the slide title."""
+        dalle_url = "https://api.openai.com/v1/images/generations"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {"model": "dall-e-3", "prompt": description, "n": 1, "size": "1024x1024"}
+        
+        response = requests.post(dalle_url, headers=headers, json=payload)
+        
+        if response.status_code == 200:
+            image_url = response.json()["data"][0]["url"]
+            img_response = requests.get(image_url)
+            img = Image.open(BytesIO(img_response.content))
+            
+            image_path = f"{description.replace(' ', '_')}.png"
+            img.save(image_path)
+            return image_path
+        
+        return None
 
