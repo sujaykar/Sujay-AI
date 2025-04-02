@@ -20,6 +20,10 @@ torchvision
 torchaudio
 PyPDF2
 tiktoken
+python-pptx
+pillow
+
+
 
 
 
