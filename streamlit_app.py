@@ -10,7 +10,7 @@ from agentic_assistant import AgenticAssistant  # Importing the agentic framewor
 MAX_CHAT_HISTORY = 10  
 MAX_DOC_CHARACTERS = 550000  
 MAX_VECTOR_DOCS = 15 
-MAX_TOKENS = 9000  # Adjusted for GPT-4o
+MAX_TOKENS = 9200  # Adjusted for GPT-4o
 MIN_SIMILARITY = 0.72  
 
 # --- Reasoning Effort Mapping ---
