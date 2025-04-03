@@ -124,3 +124,28 @@ if query:
         # Display response
         st.write("🤖 **AI Response:**")
         st.write(ai_response)
+
+# 🔹 PowerPoint Generation and Download
+        def create_pptx(content):
+            prs = Presentation()
+            slide_layout = prs.slide_layouts[1]  # Title & Content layout
+            slide = prs.slides.add_slide(slide_layout)
+            title = slide.shapes.title
+            text_box = slide.placeholders[1]
+
+            title.text = "AI Generated Response"
+            text_box.text = content
+
+            pptx_io = io.BytesIO()
+            prs.save(pptx_io)
+            pptx_io.seek(0)
+            return pptx_io
+
+        if st.button("📄 Download Response as PowerPoint"):
+            pptx_file = create_pptx(ai_response)
+            st.download_button(
+                label="📥 Click to Download",
+                data=pptx_file,
+                file_name="AI_Response.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
