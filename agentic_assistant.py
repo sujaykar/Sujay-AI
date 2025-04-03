@@ -257,72 +257,66 @@ class AgenticAssistant:
         return response
         
 
-        def generate_presentation(self, query: str, num_slides: int = 5, use_vector_db: bool = False) -> str:
-        """Generates a PowerPoint presentation based on a user query or vector database content."""
+    def generate_presentation(self, query: str, num_slides: int = 5, use_vector_db: bool = True) -> str:
+        """Generates a fully formatted PowerPoint presentation with AI-generated content and images."""
         
-        # Retrieve relevant content from vector database if specified
+        # Step 1: Retrieve content from vector database if available
+        context = query
         if use_vector_db:
             results = self.vector_db.search(query, k=5)
-            if not results or results[0].page_content == "No relevant documents found.":
-                return "No relevant documents found in the vector database."
-            context = "\n\n".join([doc.page_content for doc in results])
-        else:
-            context = query  # Use user-provided content if no vector search
-
-        # Define structured prompt
-        prompt_template = """
-        You are an expert presentation designer. Create a structured PowerPoint presentation outline.
-        Ensure the outline contains {num_slides} slides with:
-        - Slide titles
-        - Bullet points summarizing key ideas
-        - Suggestions for visuals
+            if results and results[0].page_content != "No relevant documents found.":
+                context = "\n\n".join([doc.page_content for doc in results])
         
-        Content Reference:
+        # Step 2: Generate structured slide content
+        prompt_template = f"""
+        You are an expert presentation creator. Generate a detailed PowerPoint presentation with {num_slides} slides.
+        Each slide should have:
+        - A title
+        - Well-structured content (not just bullet points)
+        - A suggestion for a relevant image description
+        
+        Use the following content as reference:
         {context}
         
-        Provide output in the following format:
+        Provide output in this format:
         Slide 1 Title: <title>
-        - <bullet point 1>
-        - <bullet point 2>
-        
-        Slide 2 Title: <title>
-        - <bullet point 1>
-        - <bullet point 2>
+        Slide 1 Content: <full text content>
+        Slide 1 Image Description: <image prompt>
         """
-        
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "num_slides"])
-        response = self.llm.predict(prompt.format(context=context, num_slides=num_slides))
-        
-        # Parse response into slides
+        response = self.llm.predict(prompt_template)
         slides = self._parse_slides(response)
         
-        # Create PowerPoint file
+        # Step 3: Create PowerPoint file
         ppt_path = self._create_pptx(query, slides)
         
         return ppt_path
     
-    def _parse_slides(self, response: str) -> List[Dict[str, List[str]]]:
-        """Parses the AI-generated response into a structured slide format."""
+    def _parse_slides(self, response: str) -> list:
+        """Parses the AI-generated response into structured slides."""
         slides = []
         lines = response.split("\n")
-        current_slide = None
+        current_slide = {}
         
         for line in lines:
             if line.startswith("Slide"):
                 if current_slide:
                     slides.append(current_slide)
-                current_slide = {"title": line.split(": ")[1], "content": []}
-            elif line.startswith("-"):
-                if current_slide:
-                    current_slide["content"].append(line.strip("- "))
+                current_slide = {"title": "", "content": "", "image_prompt": ""}
+            
+            if "Title:" in line:
+                current_slide["title"] = line.split(": ")[1]
+            elif "Content:" in line:
+                current_slide["content"] = line.split(": ")[1]
+            elif "Image Description:" in line:
+                current_slide["image_prompt"] = line.split(": ")[1]
         
         if current_slide:
             slides.append(current_slide)
         
         return slides
     
-    def _create_pptx(self, topic: str, slides: List[Dict[str, List[str]]]) -> str:
-        """Creates a PowerPoint file from the AI-generated slides."""
+    def _create_pptx(self, topic: str, slides: list) -> str:
+        """Creates and formats a PowerPoint file."""
         prs = Presentation()
         
         for slide_data in slides:
@@ -332,10 +326,10 @@ class AgenticAssistant:
             content = slide.placeholders[1]
             
             title.text = slide_data["title"]
-            content.text = "\n".join(slide_data["content"])
+            content.text = slide_data["content"]
             
-            # Generate an image for the slide using DALL·E
-            image_path = self._generate_slide_image(slide_data["title"])
+            # Generate an image for the slide
+            image_path = self._generate_slide_image(slide_data["image_prompt"])
             if image_path:
                 left = Inches(5)
                 top = Inches(2)
@@ -345,25 +339,25 @@ class AgenticAssistant:
         prs.save(ppt_path)
         return ppt_path
     
-    def _generate_slide_image(self, description: str) -> Optional[str]:
-        """Generates an image using DALL·E based on the slide title."""
+    def _generate_slide_image(self, description: str) -> str:
+        """Generates an image using DALL·E."""
         dalle_url = "https://api.openai.com/v1/images/generations"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         payload = {"model": "dall-e-3", "prompt": description, "n": 1, "size": "1024x1024"}
         
         response = requests.post(dalle_url, headers=headers, json=payload)
         
         if response.status_code == 200:
-            image_url = response.json()["data"][0]["url"]
-            img_response = requests.get(image_url)
-            img = Image.open(BytesIO(img_response.content))
-            
-            image_path = f"{description.replace(' ', '_')}.png"
-            img.save(image_path)
-            return image_path
+            try:
+                data = response.json()
+                image_url = data["data"][0]["url"]
+                img_response = requests.get(image_url)
+                img = Image.open(BytesIO(img_response.content))
+                
+                image_path = f"{description.replace(' ', '_')}.png"
+                img.save(image_path)
+                return image_path
+            except requests.exceptions.JSONDecodeError:
+                print("Error decoding JSON response from DALL·E.")
         
         return None
-
