@@ -5,6 +5,9 @@ from openai import OpenAI
 from vector_database import VectorDatabase
 from document_processor import DocumentProcessor
 from agentic_assistant import AgenticAssistant  # Importing the agentic framework
+from pptx import Presentation
+import io
+
 
 # --- Constants ---
 MAX_CHAT_HISTORY = 10  
@@ -141,11 +144,18 @@ if query:
             pptx_io.seek(0)
             return pptx_io
 
-        if st.button("📄 Download Response as PowerPoint"):
-            pptx_file = create_pptx(ai_response)
-            st.download_button(
+        def is_ppt_request(query):
+            keywords = ["powerpoint", "presentation", "ppt", "slide deck", "slides"]
+            return any(kw in query.lower() for kw in keywords)
+
+       if is_ppt_request(query):
+           if st.button("📄 Download Response as PowerPoint"):
+                pptx_file = create_pptx(ai_response)
+                st.download_button(
                 label="📥 Click to Download",
                 data=pptx_file,
                 file_name="AI_Response.pptx",
                 mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            )
+        )
+
+
