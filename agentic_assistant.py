@@ -86,10 +86,10 @@ class AgenticAssistant:
                 description="Reads course material and generates practice questions for students to test their knowledge."
             ),
             Tool(
-            name="PowerPoint Generator with DALL·E",
-            func=self.generate_presentation,
-            description="Creates a PowerPoint presentation with AI-generated images and text based on the user's query or relevant database content."
-        )
+                name="PowerPoint Generator with DALL·E",
+                func=self.generate_presentation,
+                description="Creates a PowerPoint presentation with AI-generated images and text based on the user's query or relevant database content."
+            )
         ]
         return tools
 
@@ -255,7 +255,6 @@ class AgenticAssistant:
         prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
         response = self.llm.predict(prompt.format(context=context))
         return response
-        
 
     def generate_presentation(self, query: str, num_slides: int = 5, use_vector_db: bool = True) -> str:
         """Generates a fully formatted PowerPoint presentation with AI-generated content and images."""
@@ -314,8 +313,7 @@ class AgenticAssistant:
             slides.append(current_slide)
         
         return slides
-    
-    
+
     def _generate_slide_image(self, description: str) -> str:
         """Generates an image using DALL·E."""
         dalle_url = "https://api.openai.com/v1/images/generations"
@@ -330,36 +328,34 @@ class AgenticAssistant:
                 image_url = data["data"][0]["url"]
                 img_response = requests.get(image_url)
                 img = Image.open(BytesIO(img_response.content))
-                
-                image_path = f"{description.replace(' ', '_')}.png"
+                image_path = f"{description[:10]}.png"
                 img.save(image_path)
                 return image_path
-            except requests.exceptions.JSONDecodeError:
-                print("Error decoding JSON response from DALL·E.")
-        
-        return None
-
-        def _create_pptx(self, topic: str, slides: list) -> str:
-        """Creates and formats a PowerPoint file."""
+            except Exception as e:
+                return f"Error generating image: {str(e)}"
+        else:
+            return f"Error: {response.status_code} - {response.text}"
+    
+    def _create_pptx(self, query: str, slides: List[Dict[str, str]]) -> str:
+        """Creates a PowerPoint file from the AI-generated slides."""
+        pptx_filename = f"{query[:10]}_presentation.pptx"
         prs = Presentation()
         
-        for slide_data in slides:
-            slide_layout = prs.slide_layouts[1]  # Title and Content layout
-            slide = prs.slides.add_slide(slide_layout)
+        for slide_info in slides:
+            slide = prs.slides.add_slide(prs.slide_layouts[1])  # Title and Content slide layout
+            
+            # Title
             title = slide.shapes.title
-            content = slide.placeholders[1]
+            title.text = slide_info["title"]
             
-            title.text = slide_data["title"]
-            content.text = slide_data["content"]
+            # Content
+            content_box = slide.shapes.placeholders[1]
+            content_box.text = slide_info["content"]
             
-            # Generate an image for the slide
-            image_path = self._generate_slide_image(slide_data["image_prompt"])
-            if image_path:
-                left = Inches(5)
-                top = Inches(2)
-                slide.shapes.add_picture(image_path, left, top, width=Inches(4))
-        
-        ppt_path = f"{topic.replace(' ', '_')}.pptx"
-        prs.save(ppt_path)
-        return ppt_path
-    
+            # Image generation
+            img_path = self._generate_slide_image(slide_info["image_prompt"])
+            if os.path.exists(img_path):
+                slide.shapes.add_picture(img_path, Inches(1), Inches(1.5), width=Inches(5.5), height=Inches(3.5))
+            
+        prs.save(pptx_filename)
+        return pptx_filename
