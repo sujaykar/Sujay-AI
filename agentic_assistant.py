@@ -315,29 +315,6 @@ class AgenticAssistant:
         
         return slides
     
-    def _create_pptx(self, topic: str, slides: list) -> str:
-        """Creates and formats a PowerPoint file."""
-        prs = Presentation()
-        
-        for slide_data in slides:
-            slide_layout = prs.slide_layouts[1]  # Title and Content layout
-            slide = prs.slides.add_slide(slide_layout)
-            title = slide.shapes.title
-            content = slide.placeholders[1]
-            
-            title.text = slide_data["title"]
-            content.text = slide_data["content"]
-            
-            # Generate an image for the slide
-            image_path = self._generate_slide_image(slide_data["image_prompt"])
-            if image_path:
-                left = Inches(5)
-                top = Inches(2)
-                slide.shapes.add_picture(image_path, left, top, width=Inches(4))
-        
-        ppt_path = f"{topic.replace(' ', '_')}.pptx"
-        prs.save(ppt_path)
-        return ppt_path
     
     def _generate_slide_image(self, description: str) -> str:
         """Generates an image using DALL·E."""
@@ -361,3 +338,28 @@ class AgenticAssistant:
                 print("Error decoding JSON response from DALL·E.")
         
         return None
+
+        def _create_pptx(self, topic: str, slides: list) -> str:
+        """Creates and formats a PowerPoint file."""
+        prs = Presentation()
+        
+        for slide_data in slides:
+            slide_layout = prs.slide_layouts[1]  # Title and Content layout
+            slide = prs.slides.add_slide(slide_layout)
+            title = slide.shapes.title
+            content = slide.placeholders[1]
+            
+            title.text = slide_data["title"]
+            content.text = slide_data["content"]
+            
+            # Generate an image for the slide
+            image_path = self._generate_slide_image(slide_data["image_prompt"])
+            if image_path:
+                left = Inches(5)
+                top = Inches(2)
+                slide.shapes.add_picture(image_path, left, top, width=Inches(4))
+        
+        ppt_path = f"{topic.replace(' ', '_')}.pptx"
+        prs.save(ppt_path)
+        return ppt_path
+    
