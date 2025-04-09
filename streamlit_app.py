@@ -84,9 +84,9 @@ def retrieve_from_qdrant(query):
 
 def determine_reasoning_effort(query):
     """Determine the reasoning effort level based on query complexity."""
-    if len(query.split()) < 8:  # Simple queries
+    if len(query.split()) < 12:  # Simple queries
         return "low"
-    elif "explain" in query.lower() or "analyze" in query.lower():  # Requires deeper reasoning
+    elif any(keyword in query.lower() for keyword in ["explain", "analyze", "think step by step", "evaluate", "reason", "deduce"]):  # Requires deeper reasoning
         return "high"
     return "medium"
 
