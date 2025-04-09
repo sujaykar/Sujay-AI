@@ -150,7 +150,7 @@ def is_ppt_request(query):
 
 if query and is_ppt_request(query):
     if st.button("📄 Download Response as PowerPoint"):
-        pptx_file = create_pptx(ai_response)
+        pptx_file = agentic_assistant.generate_presentation(query)
         st.download_button(
             label="📥 Click to Download",
             data=pptx_file,
