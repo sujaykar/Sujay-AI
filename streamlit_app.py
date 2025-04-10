@@ -151,6 +151,22 @@ def is_ppt_request(query):
 if query and is_ppt_request(query):
     if st.button("📄 Download Response as PowerPoint"):
         pptx_file = agentic_assistant.generate_presentation(query)
+        # 🔹 Show generated images (if any)
+if hasattr(agentic_assistant, 'image_generator'):
+    slides = agentic_assistant.image_generator.generate_images_for_slides([{
+        "title": query, "content": ai_response
+    }])  # Use a simplified 1-slide example based on the current query
+
+    for slide in slides:
+        st.subheader(f"🖼️ Slide: {slide['title']}")
+        st.markdown(f"**Prompt:** {slide.get('image_prompt', 'N/A')}")
+        if slide.get("image_path") and os.path.exists(slide["image_path"]):
+            st.image(slide["image_path"], caption="Generated Slide Image", use_column_width=True)
+        elif slide.get("image_url"):
+            st.image(slide["image_url"], caption="Generated Slide Image (via URL)", use_column_width=True)
+        else:
+            st.warning("⚠️ Image generation failed.")
+
         st.download_button(
             label="📥 Click to Download",
             data=pptx_file,
