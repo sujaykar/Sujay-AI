@@ -19,6 +19,8 @@ from pptx.util import Inches
 from PIL import Image
 import requests
 from io import BytesIO
+from image_creator import DalleImageGenerator
+
 
 class AgenticAssistant:
     def __init__(self, vector_db, model_name="o3-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
@@ -27,6 +29,7 @@ class AgenticAssistant:
         self.model_name = model_name
         self.temperature = temperature
         self.api_key = api_key
+        self.image_generator = DalleImageGenerator()
 
         # Initialize the language model
         self.llm = ChatOpenAI(
@@ -283,7 +286,7 @@ class AgenticAssistant:
         Slide 1 Image Description: <image prompt>
         """
         response = self.llm.predict(prompt_template)
-        slides = self._parse_slides(response)
+        slides = self.image_generator.generate_images_for_slides(slides)
         
         # Step 3: Create PowerPoint file
         ppt_path = self._create_pptx(query, slides)
@@ -340,6 +343,7 @@ class AgenticAssistant:
         """Creates a PowerPoint file from the AI-generated slides."""
         pptx_filename = f"{query[:10]}_presentation.pptx"
         prs = Presentation()
+
         
         for slide_info in slides:
             slide = prs.slides.add_slide(prs.slide_layouts[1])  # Title and Content slide layout
