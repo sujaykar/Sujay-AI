@@ -128,31 +128,16 @@ if query:
         # 🔹 Step 3: Send query to the correct agent with Qdrant context
         agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
 
-        # 🔹 Step 4: Generate AI response using GPT-4o with proper reasoning effort
-        model_params = REASONING_EFFORT[reasoning_level]
-
-        request_payload = {
-            "model": "chatgpt-4o-latest",
-            "messages": [
-                {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
-                {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
-            ],
-            "max_tokens": model_params["max_tokens"],
-            "temperature": model_params["temperature"]
-        }
-
-        response = openai_client.chat.completions.create(**request_payload)
-
-        ai_response = response.choices[0].message.content  # ✅ Fixed missing assignment
-
+        
         # 🔹 Store chat history (limit to last 10 messages)
-        st.session_state.chat_history.append({"query": query, "response": ai_response})
+        st.session_state.chat_history.append({"query": query, "response": agent_response})
+
         if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
             st.session_state.chat_history.pop(0)  # Keep only the last 10 entries
 
         # Display response
         st.write("🤖 **AI Response:**")
-        st.write(ai_response)
+        st.write(agent_response)
 
 # --- Display Download Button Conditionally ---
 if st.session_state.get("last_ppt_path") and os.path.exists(st.session_state.last_ppt_path):
