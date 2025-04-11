@@ -16,8 +16,7 @@ MAX_VECTOR_DOCS = 15
 MAX_TOKENS = 9200  # Adjusted for GPT-4o
 MIN_SIMILARITY = 0.72  
 
-@st.cache_resource # Cache resource across reruns
-
+@st.cache_resource # Cache
 
 # --- Initialize Components ---
 vector_db = VectorDatabase(embedding_model="openai")
