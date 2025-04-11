@@ -10,12 +10,13 @@ import io
 
 
 # --- Constants ---
-MAX_CHAT_HISTORY = 10  
+MAX_CHAT_HISTORY = 15  
 MAX_DOC_CHARACTERS = 550000  
 MAX_VECTOR_DOCS = 15 
 MAX_TOKENS = 9200  # Adjusted for GPT-4o
 MIN_SIMILARITY = 0.72  
 
+@st.cache_resource # Cache resource across reruns
 # --- Reasoning Effort Mapping ---
 REASONING_EFFORT = {
     "low": {"temperature": 0.3, "max_tokens": 4096},
@@ -28,7 +29,7 @@ vector_db = VectorDatabase(embedding_model="openai")
 document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Initialize the Agentic Assistant with GPT-4o model
+# Initialize the Agentic Assistant with GPT-4o latest model
 agentic_assistant = AgenticAssistant(vector_db, model_name="chatgpt-4o-latest", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
@@ -63,14 +64,39 @@ st.write("Ask me anything about the uploaded documents or any topic!")
 # Initialize session state for chat history
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "last_ppt_path" not in st.session_state:
+    st.session_state.last_ppt_path = None
+if "last_image_path" not in st.session_state:
+    st.session_state.last_image_path = None # Store last image path if needed outside chat
 
-# Display past chat messages with better formatting
-st.subheader("📜 Chat History")
-for chat in st.session_state.chat_history[-MAX_CHAT_HISTORY:]:
-    with st.expander(f"📌 **User:** {chat['query']}"):
-        st.markdown(f"**🤖 AI:** {chat['response']}")
+# --- Display Chat History ---
+st.subheader("📜 Conversation")
+chat_container = st.container(height=500)
+with chat_container:
+    history_to_display = st.session_state.chat_history[-MAX_CHAT_HISTORY:]
+    for chat in history_to_display: # Display oldest first within the visible window
+        with st.chat_message("user", avatar="👤"):
+             st.markdown(f"{chat['query']}") # Display query
+        with st.chat_message("assistant", avatar="🤖"):
+            response_content = chat['response']
+            # --- Handle Prefixed Responses ---
+            if response_content.startswith("IMAGE_PATH::"):
+                img_path = response_content.split("::", 1)[1]
+                if os.path.exists(img_path):
+                    st.image(img_path, caption="Generated Image")
+                    st.session_state.last_image_path = img_path # Store path if needed
+                else:
+                    st.error(f"Generated image file not found at path: {img_path}")
+            elif response_content.startswith("PPT_PATH::"):
+                ppt_path = response_content.split("::", 1)[1]
+                st.success(f"PowerPoint generated: `{os.path.basename(ppt_path)}`. Use download button below.")
+                st.session_state.last_ppt_path = ppt_path # Store path for button
+            elif response_content.startswith("ERROR::"):
+                st.error(response_content.split("::", 1)[1])
+            else:
+                st.markdown(response_content) # Display standard text response
 
-query = st.chat_input("How can I help you? Ask me anything...")
+query = st.chat_input("How can I help you? Ask me anything that is ethical...")
 
 # --- Query Processing ---
 def retrieve_from_qdrant(query):
@@ -84,7 +110,7 @@ def retrieve_from_qdrant(query):
 
 def determine_reasoning_effort(query):
     """Determine the reasoning effort level based on query complexity."""
-    if len(query.split()) < 12:  # Simple queries
+    if len(query.split()) < 20:  # Simple queries
         return "low"
     elif any(keyword in query.lower() for keyword in ["explain", "analyze", "think step by step", "evaluate", "reason", "deduce"]):  # Requires deeper reasoning
         return "high"
@@ -128,53 +154,62 @@ if query:
         st.write("🤖 **AI Response:**")
         st.write(ai_response)
 
-# 🔹 PowerPoint Generation and Download
-def create_pptx(content):
-    prs = Presentation()
-    slide_layout = prs.slide_layouts[1]  # Title & Content layout
-    slide = prs.slides.add_slide(slide_layout)
-    title = slide.shapes.title
-    text_box = slide.placeholders[1]
+# --- Display Download Button Conditionally ---
+if st.session_state.get("last_ppt_path") and os.path.exists(st.session_state.last_ppt_path):
+     ppt_path = st.session_state.last_ppt_path
+     try:
+        with open(ppt_path, "rb") as fp:
+            st.download_button(
+                label=f"📥 Download {os.path.basename(ppt_path)}",
+                data=fp,
+                file_name=os.path.basename(ppt_path),
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                key=f"download_{ppt_path}"
+            )
+     except Exception as e:
+          st.error(f"Could not read PPT file for download: {e}")
+     # Optionally clear state after showing button once:
+     st.session_state.last_ppt_path = None
 
-    title.text = "AI Generated Response"
-    text_box.text = content
+if query:
+    # Reset previous artifact paths before processing new query
+    st.session_state.last_ppt_path = None
+    st.session_state.last_image_path = None
 
-    pptx_io = io.BytesIO()
-    prs.save(pptx_io)
-    pptx_io.seek(0)
-    return pptx_io
+    # Add user query to history immediately for better UX
+    st.session_state.chat_history.append({"query": query, "response": "..."}) # Placeholder for response
+    if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
+        st.session_state.chat_history.pop(0)
+    # Rerun to show user message immediately
+    st.rerun()
 
-# --- PowerPoint Generation and Display of Images --- 
+elif len(st.session_state.chat_history) > 0 and st.session_state.chat_history[-1]["response"] == "...":
+    # This block runs after the rerun triggered by user input
+    # Get the actual query that needs processing
+    query_to_process = st.session_state.chat_history[-1]["query"]
 
-def is_ppt_request(query):
-    keywords = ["powerpoint", "presentation", "ppt", "slide deck", "slides"]
-    return any(kw in query.lower() for kw in keywords)
+    with st.spinner("Thinking..."):
+        agent_response = "ERROR::An unexpected issue occurred." # Default error
+        try:
+            # --- Call Agentic Assistant ---
+            # Pass only the query; agent tools handle context retrieval internally if needed
+            agent_response = agentic_assistant.run(query_to_process)
 
-if query and is_ppt_request(query):
-    if st.button("📄 Download Response as PowerPoint"):
-        pptx_file = agentic_assistant.generate_presentation(query)
+        except Exception as e:
+            st.error(f"An error occurred during agent execution: {e}")
+            print(f"Agent execution error: {e}\n{traceback.format_exc()}")
+            agent_response = f"ERROR::An error occurred: {e}"
 
-        # 🔹 Show generated images (if any)
-        if hasattr(agentic_assistant, 'image_generator'):
-            slides = agentic_assistant.image_generator.generate_images_for_slides([{
-                "title": query, "content": ai_response
-            }])  # Using the current query as an example for a single-slide prompt
+        # Update the placeholder response in history
+        st.session_state.chat_history[-1]["response"] = agent_response
 
-            # Display images (as generated by Agentic Assistant)
-            for slide in slides:
-                st.subheader(f"🖼️ Slide: {slide['title']}")
-                st.markdown(f"**Prompt:** {slide.get('image_prompt', 'N/A')}")
-                if slide.get("image_path") and os.path.exists(slide["image_path"]):
-                    st.image(slide["image_path"], caption="Generated Slide Image", use_column_width=True)
-                elif slide.get("image_url"):
-                    st.image(slide["image_url"], caption="Generated Slide Image (via URL)", use_column_width=True)
-                else:
-                    st.warning("⚠️ Image generation failed.")
+        # Store paths if artifacts were created
+        if agent_response.startswith("PPT_PATH::"):
+             st.session_state.last_ppt_path = agent_response.split("::", 1)[1]
+        elif agent_response.startswith("IMAGE_PATH::"):
+             st.session_state.last_image_path = agent_response.split("::", 1)[1]
 
-        # 🔹 Download button for PPTX file
-        st.download_button(
-            label="📥 Click to Download",
-            data=pptx_file,
-            file_name="AI_Response.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-        )
+        # Rerun again to display the actual response and potential download button
+        st.rerun()
+        
+        
