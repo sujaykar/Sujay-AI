@@ -29,7 +29,7 @@ document_processor = DocumentProcessor()
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Initialize the Agentic Assistant with GPT-4o model
-agentic_assistant = AgenticAssistant(vector_db, model_name="gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
+agentic_assistant = AgenticAssistant(vector_db, model_name="chatgpt-4o-latest", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
 st.set_page_config(
@@ -106,7 +106,7 @@ if query:
         model_params = REASONING_EFFORT[reasoning_level]
 
         request_payload = {
-            "model": "gpt-4o",
+            "model": "chatgpt-4o-latest",
             "messages": [
                 {"role": "system", "content": "Provide clear, context-aware answers using retrieved knowledge and agents."},
                 {"role": "user", "content": f"Context: {retrieved_context}\n\nQuestion: {query}\nAnswer:"}
