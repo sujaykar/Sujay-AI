@@ -286,7 +286,6 @@ class AgenticAssistant:
         Slide 1 Image Description: <image prompt>
         """
         response = self.llm.predict(prompt_template)
-        slides = self._parse_slides(response)
         slides = self.image_generator.generate_images_for_slides(slides)
         
         # Step 3: Create PowerPoint file
@@ -340,7 +339,7 @@ class AgenticAssistant:
         else:
             return f"Error: {response.status_code} - {response.text}"
     
-    def _create_pptx(self, slides: List[Dict[str, str]]) -> io.BytesIO:
+    def _create_pptx(self, query: str, slides: List[Dict[str, str]]) -> str:
         """Creates a PowerPoint file from the AI-generated slides."""
         pptx_filename = f"{query[:10]}_presentation.pptx"
         prs = Presentation()
@@ -359,11 +358,8 @@ class AgenticAssistant:
             
             # Image generation
             img_path = self._generate_slide_image(slide_info["image_prompt"])
-            slide_info["image_path"] = img_path
             if os.path.exists(img_path):
                 slide.shapes.add_picture(img_path, Inches(1), Inches(1.5), width=Inches(5.5), height=Inches(3.5))
             
-        pptx_io = io.BytesIO()
-        prs.save(pptx_io)
-        pptx_io.seek(0)
-        return pptx_io
+        prs.save(pptx_filename)
+        return pptx_filename
