@@ -23,7 +23,7 @@ from image_creator import DalleImageGenerator
 
 
 class AgenticAssistant:
-    def __init__(self, vector_db, model_name="o3-mini", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
+    def __init__(self, vector_db, model_name="chatgpt-4o-latest", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
         """Initialize the AI-powered assistant."""
         self.vector_db = vector_db
         self.model_name = model_name
