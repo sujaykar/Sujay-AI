@@ -135,9 +135,9 @@ if query:
         if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
             st.session_state.chat_history.pop(0)  # Keep only the last 10 entries
 
-        # Display response
-        st.write("🤖 **AI Response:**")
-        st.write(agent_response)
+        # Display response ( the code is modified to show response below)
+        #st.write("🤖 **AI Response:**")
+        #st.write(agent_response)
 
 # --- Display Download Button Conditionally ---
 if st.session_state.get("last_ppt_path") and os.path.exists(st.session_state.last_ppt_path):
@@ -162,13 +162,13 @@ if query:
     st.session_state.last_image_path = None
 
     # Add user query to history immediately for better UX
-    st.session_state.chat_history.append({"query": query, "response": "..."}) # Placeholder for response
+    st.session_state.chat_history.append({"query": query, "agent_response": "..."}) # Placeholder for response
     if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
         st.session_state.chat_history.pop(0)
     # Rerun to show user message immediately
     st.rerun()
 
-elif len(st.session_state.chat_history) > 0 and st.session_state.chat_history[-1]["response"] == "...":
+elif len(st.session_state.chat_history) > 0 and st.session_state.chat_history[-1]["agent_response"] == "...":
     # This block runs after the rerun triggered by user input
     # Get the actual query that needs processing
     query_to_process = st.session_state.chat_history[-1]["query"]
