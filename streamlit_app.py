@@ -116,85 +116,48 @@ def determine_reasoning_effort(query):
         return "high"
     return "medium"
 
+# --- Handle New Chat Input ---
 if query:
-    with st.spinner("Processing your query..."):
-        # 🔹 Step 1: Retrieve relevant documents from Qdrant
-        retrieved_context = retrieve_from_qdrant(query)
-
-        # 🔹 Step 2: Determine reasoning effort
-        reasoning_level = determine_reasoning_effort(query)
-        st.sidebar.info(f"🔍 Using **{reasoning_level.upper()}** reasoning effort.")
-
-        # 🔹 Step 3: Send query to the correct agent with Qdrant context
-        agent_response = agentic_assistant.run(f"Context: {retrieved_context}\n\nQuestion: {query}")
-
-        
-        # 🔹 Store chat history (limit to last 10 messages)
-        st.session_state.chat_history.append({"query": query, "response": agent_response})
-
-        if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
-            st.session_state.chat_history.pop(0)  # Keep only the last 10 entries
-
-        # Display response ( the code is modified to show response below)
-        #st.write("🤖 **AI Response:**")
-        #st.write(agent_response)
-
-# --- Display Download Button Conditionally ---
-if st.session_state.get("last_ppt_path") and os.path.exists(st.session_state.last_ppt_path):
-     ppt_path = st.session_state.last_ppt_path
-     try:
-        with open(ppt_path, "rb") as fp:
-            st.download_button(
-                label=f"📥 Download {os.path.basename(ppt_path)}",
-                data=fp,
-                file_name=os.path.basename(ppt_path),
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                key=f"download_{ppt_path}"
-            )
-     except Exception as e:
-          st.error(f"Could not read PPT file for download: {e}")
-     # Optionally clear state after showing button once:
-     st.session_state.last_ppt_path = None
-
-if query:
-    # Reset previous artifact paths before processing new query
+    # Reset paths for new query
     st.session_state.last_ppt_path = None
     st.session_state.last_image_path = None
 
-    # Add user query to history immediately for better UX
-    st.session_state.chat_history.append({"query": query, "agent_response": "..."}) # Placeholder for response
+    # Add placeholder message to chat history and trigger rerun
+    st.session_state.chat_history.append({"query": query, "response": "..."})
     if len(st.session_state.chat_history) > MAX_CHAT_HISTORY:
         st.session_state.chat_history.pop(0)
-    # Rerun to show user message immediately
     st.rerun()
 
-elif len(st.session_state.chat_history) > 0 and st.session_state.chat_history[-1]["agent_response"] == "...":
-    # This block runs after the rerun triggered by user input
-    # Get the actual query that needs processing
+# --- Handle Placeholder Message (After Rerun) ---
+elif st.session_state.chat_history and st.session_state.chat_history[-1]["response"] == "...":
+    # Get the query from the latest chat message
     query_to_process = st.session_state.chat_history[-1]["query"]
 
     with st.spinner("Thinking..."):
-        agent_response = "ERROR::An unexpected issue occurred." # Default error
         try:
-            # --- Call Agentic Assistant ---
-            # Pass only the query; agent tools handle context retrieval internally if needed
-            agent_response = agentic_assistant.run(query_to_process)
+            # 🔹 Step 1: Retrieve relevant documents
+            retrieved_context = retrieve_from_qdrant(query_to_process)
+
+            # 🔹 Step 2: Determine reasoning effort
+            reasoning_level = determine_reasoning_effort(query_to_process)
+            st.sidebar.info(f"🔍 Using **{reasoning_level.upper()}** reasoning effort.")
+
+            # 🔹 Step 3: Run the agent
+            full_prompt = f"Context: {retrieved_context}\n\nQuestion: {query_to_process}"
+            agent_response = agentic_assistant.run(full_prompt)
 
         except Exception as e:
-            st.error(f"An error occurred during agent execution: {e}")
-            print(f"Agent execution error: {e}\n{traceback.format_exc()}")
             agent_response = f"ERROR::An error occurred: {e}"
+            st.error(agent_response)
 
-        # Update the placeholder response in history
+        # Update placeholder with actual response
         st.session_state.chat_history[-1]["response"] = agent_response
 
-        # Store paths if artifacts were created
+        # Store any artifact path
         if agent_response.startswith("PPT_PATH::"):
-             st.session_state.last_ppt_path = agent_response.split("::", 1)[1]
+            st.session_state.last_ppt_path = agent_response.split("::", 1)[1]
         elif agent_response.startswith("IMAGE_PATH::"):
-             st.session_state.last_image_path = agent_response.split("::", 1)[1]
+            st.session_state.last_image_path = agent_response.split("::", 1)[1]
 
-        # Rerun again to display the actual response and potential download button
+        # Trigger another rerun to show full assistant reply
         st.rerun()
-        
-        
