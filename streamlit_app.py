@@ -78,7 +78,7 @@ with chat_container:
         with st.chat_message("user", avatar="👤"):
              st.markdown(f"{chat['query']}") # Display query
         with st.chat_message("assistant", avatar="🤖"):
-            response_content = chat['response']
+            response_content = chat['agent_response']
             # --- Handle Prefixed Responses ---
             if response_content.startswith("IMAGE_PATH::"):
                 img_path = response_content.split("::", 1)[1]
