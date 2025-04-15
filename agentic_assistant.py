@@ -250,64 +250,66 @@ class AgenticAssistant:
         # Initialize Langgraph workflow
         self.workflow = self._build_workflow()
 
-    def _build_workflow(self):
-    builder = StateGraph(AgentState)
+   
+     def _build_workflow(self):
+        builder = StateGraph(AgentState)
 
-    # Add nodes (this part is correct)
-    builder.add_node("retrieve_context", retrieve_context)
-    builder.add_node("summarize_document", summarize_document)
-    builder.add_node("career_coach", career_coach)
-    builder.add_node("analyze_charts", analyze_charts)
-    builder.add_node("analyze_financial_data", analyze_financial_data)
-    builder.add_node("answer_general_query", answer_general_query)
-    builder.add_node("generate_practice_questions", generate_practice_questions)
-    builder.add_node("create_single_image", create_single_image)
-    builder.add_node("generate_powerpoint_content", generate_powerpoint_content)
-    builder.add_node("parse_slides", parse_slides)
-    builder.add_node("generate_powerpoint_images", generate_powerpoint_images)
-    builder.add_node("create_powerpoint_file", create_powerpoint_file)
-    builder.add_node("format_response", format_response)
+        # Add nodes (this part is correct)
+        builder.add_node("retrieve_context", retrieve_context)
+        builder.add_node("summarize_document", summarize_document)
+        builder.add_node("career_coach", career_coach)
+        builder.add_node("analyze_charts", analyze_charts)
+        builder.add_node("analyze_financial_data", analyze_financial_data)
+        builder.add_node("answer_general_query", answer_general_query)
+        builder.add_node("generate_practice_questions", generate_practice_questions)
+        builder.add_node("create_single_image", create_single_image)
+        builder.add_node("generate_powerpoint_content", generate_powerpoint_content)
+        builder.add_node("parse_slides", parse_slides)
+        builder.add_node("generate_powerpoint_images", generate_powerpoint_images)
+        builder.add_node("create_powerpoint_file", create_powerpoint_file)
+        builder.add_node("format_response", format_response)
 
-    # Set entry point
-    builder.set_entry_point("retrieve_context")
+        # Set entry point
+        builder.set_entry_point("retrieve_context")
 
-    # Regular edges
-    builder.add_edge("answer_general_query", "format_response")
-    builder.add_edge("summarize_document", "format_response")
-    builder.add_edge("generate_powerpoint_content", "parse_slides")
-    builder.add_edge("parse_slides", "generate_powerpoint_images")
-    builder.add_edge("generate_powerpoint_images", "create_powerpoint_file")
-    builder.add_edge("create_powerpoint_file", "format_response")
-    builder.add_edge("create_single_image", "format_response")
+        # Regular edges
+        builder.add_edge("answer_general_query", "format_response")
+        builder.add_edge("summarize_document", "format_response")
+        builder.add_edge("generate_powerpoint_content", "parse_slides")
+        builder.add_edge("parse_slides", "generate_powerpoint_images")
+        builder.add_edge("generate_powerpoint_images", "create_powerpoint_file")
+        builder.add_edge("create_powerpoint_file", "format_response")
+        builder.add_edge("create_single_image", "format_response")
 
-    # Conditional edges
-    def route_after_retrieve(state: AgentState):
-        query = state.query.lower()
-        
-        if "powerpoint" in query:
-            return "generate_powerpoint_content"
+        # Conditional edges
+        def route_after_retrieve(state: AgentState):
+            query = state.query.lower()
             
-        IMAGE_KEYWORDS = ["create", "generate", "make", "draw", "image", "picture", "drawing"]
-        if any(word in query for word in IMAGE_KEYWORDS):
-            return "create_single_image"
-            
-        # Default route
-        return "answer_general_query"
+            if "powerpoint" in query:
+                return "generate_powerpoint_content"
+                
+            IMAGE_KEYWORDS = ["create", "generate", "make", "draw", "image", "picture", "drawing"]
+            if any(word in query for word in IMAGE_KEYWORDS):
+                return "create_single_image"
+                
+            # Default route
+            return "answer_general_query"
 
-    builder.add_conditional_edges(
-        "retrieve_context",
-        route_after_retrieve,
-        {
-            "generate_powerpoint_content": "generate_powerpoint_content",
-            "create_single_image": "create_single_image",
-            "answer_general_query": "answer_general_query"
-        }
-    )
+        builder.add_conditional_edges(
+            "retrieve_context",
+            route_after_retrieve,
+            {
+                "generate_powerpoint_content": "generate_powerpoint_content",
+                "create_single_image": "create_single_image",
+                "answer_general_query": "answer_general_query"
+            }
+        )
 
-    # Final edge
-    builder.add_edge("format_response", END)
+        # Final edge
+        builder.add_edge("format_response", END)
 
-    return builder.compile()
+        return builder.compile()
+
     
     def run(self, query: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
         """Processes the user query using the Langgraph workflow."""
