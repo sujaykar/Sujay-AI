@@ -25,6 +25,7 @@ import re  # For regex operations
 from pptx.enum.text import MSO_AUTO_SIZE  # For text auto-sizing
 
 
+
 class AgenticAssistant:
     def __init__(self, vector_db, model_name="chatgpt-4o-latest", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
         """Initialize the AI-powered assistant."""
@@ -265,6 +266,7 @@ class AgenticAssistant:
             safe_prompt = re.sub(r'[^\w\s-]', '', prompt).strip()
             safe_prompt = re.sub(r'[-\s]+', '_', safe_prompt)
             save_dir = "generated_images" # Define save directory
+            os.makedirs(save_dir, exist_ok=True)
             filename = f"single_{safe_prompt[:50]}.png"
             filepath = os.path.join(save_dir, filename)
 
