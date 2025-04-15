@@ -250,7 +250,6 @@ class AgenticAssistant:
         # Initialize Langgraph workflow
         self.workflow = self._build_workflow()
 
-
     def _build_workflow(self):
         builder = StateGraph(AgentState)
 
