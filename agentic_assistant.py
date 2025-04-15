@@ -25,13 +25,16 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph import StateGraph, END
 import traceback
+from dataclasses import dataclass, field
+from typing import List, Optional, Union
 
 # Define the state for the Langgraph
+@dataclass
 class AgentState:
     query: str
-    chat_history: List[BaseMessage]
+    chat_history: List[BaseMessage] = field(default_factory=list)
     retrieved_context: Optional[List[Document]] = None
-    intermediate_output: Optional[str] = None
+    intermediate_output: Optional[Union[str, dict]] = None
     image_path: Optional[str] = None
     ppt_path: Optional[str] = None
 
