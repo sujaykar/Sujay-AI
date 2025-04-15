@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 from pptx import Presentation
-from pptx.util import Inches,pt
+from pptx.util import Inches
 from PIL import Image
 import requests
 from io import BytesIO
