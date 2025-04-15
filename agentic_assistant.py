@@ -222,7 +222,7 @@ def create_powerpoint_file(state: AgentState):
 
 def retrieve_context(state: AgentState):
     """Retrieves relevant documents from the vector database."""
-    query = state.query
+    query = state.query.lower()
     results = vector_db_instance.search(query, k=5)
     return {"retrieved_context": results}
 
