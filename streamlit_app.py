@@ -143,8 +143,9 @@ elif st.session_state.chat_history and st.session_state.chat_history[-1]["respon
             st.sidebar.info(f"🔍 Using **{reasoning_level.upper()}** reasoning effort.")
 
             # 🔹 Step 3: Run the agent
-            full_prompt = f"Context: {retrieved_context}\n\nQuestion: {query_to_process}"
-            agent_response = agentic_assistant.run(full_prompt)
+            #full_prompt = f"Context: {retrieved_context}\n\nQuestion: {query_to_process}"
+            #agent_response = agentic_assistant.run(full_prompt)
+            agent_response = agentic_assistant.run(query_to_process)
 
         except Exception as e:
             agent_response = f"ERROR::An error occurred: {e}"
