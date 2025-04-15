@@ -15,11 +15,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import plotly.express as px
 from pptx import Presentation
-from pptx.util import Inches
+from pptx.util import Inches,pt
 from PIL import Image
 import requests
 from io import BytesIO
 from image_creator import DalleImageGenerator
+import traceback  # For error stack traces
+import re  # For regex operations
+from pptx.enum.text import MSO_AUTO_SIZE  # For text auto-sizing
 
 
 class AgenticAssistant:
