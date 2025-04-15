@@ -274,11 +274,13 @@ class AgenticAssistant:
         # Regular edges
         builder.add_edge("answer_general_query", "format_response")
         builder.add_edge("summarize_document", "format_response")
+        builder.add_edge("create_single_image", "format_response")
+
+        # Workflow for PowerPoint generation - THESE SHOULD BE REGULAR EDGES
         builder.add_edge("generate_powerpoint_content", "parse_slides")
         builder.add_edge("parse_slides", "generate_powerpoint_images")
         builder.add_edge("generate_powerpoint_images", "create_powerpoint_file")
         builder.add_edge("create_powerpoint_file", "format_response")
-        builder.add_edge("create_single_image", "format_response")
 
         # Conditional edges
         def route_after_retrieve(state: AgentState):
@@ -308,7 +310,7 @@ class AgenticAssistant:
         builder.add_edge("format_response", END)
 
         return builder.compile()
-
+        
 
     def run(self, query: str, chat_history: Optional[List[BaseMessage]] = None) -> str:
         """Processes the user query using the Langgraph workflow."""
