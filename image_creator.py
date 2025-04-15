@@ -9,7 +9,7 @@ import requests
 from io import BytesIO
 
 class DalleImageGenerator:
-    def __init__(self, model: str = "dall-e-3", size: str = "1024x1024")
+    def __init__(self, model: str = "dall-e-3", size: str = "1024x1024"):
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY not set in environment variables.")
