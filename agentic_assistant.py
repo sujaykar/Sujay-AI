@@ -282,8 +282,10 @@ class AgenticAssistant:
         builder.add_edge("generate_powerpoint_images", "create_powerpoint_file")
         builder.add_edge("create_powerpoint_file", "format_response")
 
+        IMAGE_KEYWORDS = ["create", "generate", "make", "draw", "image", "picture", "drawing"]
+
         # Workflow for single image creation
-        builder.add_edge("retrieve_context", "create_single_image", {"condition": lambda state: any(word in state.query.lower() for word in ["create", "generate", "make", "draw", "image", "picture", "drawing"])})
+        builder.add_edge("retrieve_context", "create_single_image", {"condition": lambda state: any(word in state.query.lower() for word in IMAGE_KEYWORDS)})
         builder.add_edge("create_single_image", "format_response")
 
         # Default path if no specific condition is met (e.g., general question)
