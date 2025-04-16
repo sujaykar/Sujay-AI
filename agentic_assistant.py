@@ -251,36 +251,55 @@ class AgenticAssistant:
     # --- NEW Method for Single Image Creation ---
     def create_single_image(self, prompt: str) -> str:
         """Generates a single image using DalleImageGenerator based on the prompt."""
+        print(f"\n--- DEBUG: create_single_image CALLED ---") # Mark function entry
+        print(f"--- DEBUG: Received prompt: '{prompt}' ---")
         if not self.image_generator:
+            print("--- DEBUG: Image generator instance is missing ---")
             return "ERROR::Image generator is not available."
 
         print(f"Tool 'Image Creator' called with prompt: {prompt[:100]}...")
         try:
             # Use the DalleImageGenerator instance
+            cleaned_prompt = re.sub(r"^(create|generate|make|draw)\s+(an?|the)\s+(image|picture|drawing)\s+(of|about)\s+", "", prompt, flags=re.IGNORECASE).strip()
+            if not cleaned_prompt: # Handle empty prompt after cleaning
+                 cleaned_prompt = prompt # Use original if cleaning removed everything
+            print(f"--- DEBUG: Using prompt for generation: '{cleaned_prompt}' ---")
+
+            # Use the DalleImageGenerator instance
+            print(f"--- DEBUG: Calling self.image_generator.generate_image ---")
             # generate_image should return URL, download_image saves it and returns path
-            image_url = self.image_generator.generate_image(prompt)
+            image_url = self.image_generator.generate_image(cleaned_prompt)
             if not image_url:
+                 print("--- DEBUG: self.image_generator.generate_image returned None or empty URL ---")
                  raise ValueError("Image generation failed to return a URL.")
+            print(f"--- DEBUG: Received image URL: {image_url} ---")
 
             # Create a safe filename based on the prompt
-            safe_prompt = re.sub(r'[^\w\s-]', '', prompt).strip()
+            safe_prompt = re.sub(r'[^\w\s-]', '', cleaned_prompt).strip()
             safe_prompt = re.sub(r'[-\s]+', '_', safe_prompt)
             save_dir = "generated_images" # Define save directory
             os.makedirs(save_dir, exist_ok=True)
             filename = f"single_{safe_prompt[:50]}.png"
             filepath = os.path.join(save_dir, filename)
+            print(f"--- DEBUG: Target image filepath: {filepath} ---")
+            print(f"--- DEBUG: Calling self.image_generator.download_image ---")
 
             self.image_generator.download_image(image_url, filepath) # Download and save
+            print(f"--- DEBUG: self.image_generator.download_image completed ---")
 
             if os.path.exists(filepath):
                 print(f"Image created successfully: {filepath}")
                 return f"IMAGE_PATH::{filepath}" # Return path with prefix
             else:
+                 print(f"--- DEBUG: ERROR - File NOT found at {filepath} after download attempt! ---")
                  raise ValueError("Image downloaded but file not found at path.")
 
         except Exception as e:
-            print(f"Error in create_single_image: {e}\n{traceback.format_exc()}")
-            return f"ERROR::Failed to generate image: {str(e)}"
+            error_message = f"Failed to generate image: {str(e)}"
+            print(f"--- DEBUG: EXCEPTION in create_single_image: {error_message} ---")
+            print(traceback.format_exc()) # Print the full traceback to console
+            # Ensure the ERROR:: prefix is always returned on failure
+            return f"ERROR::{error_message}"
 
     # --- Modified PowerPoint Generation ---
     def generate_presentation(self, topic: str, num_slides: int = 5, use_vector_db: bool = True) -> str:
