@@ -269,7 +269,7 @@ class AgenticAssistant:
             return f"ERROR::{error_msg}"
 
     # --- PowerPoint Generation ---
-    def generate_presentation(self, topic: str, num_slides: int = 15) -> str:
+    def generate_presentation(self, topic: str, num_slides: int = 5) -> str:
         """Enhanced PowerPoint generation with automatic image inclusion."""
         print(f"\n--- PowerPoint generation requested: {topic} ({num_slides} slides) ---")
         
