@@ -69,53 +69,53 @@ if "last_ppt_path" not in st.session_state:
 if "last_image_path" not in st.session_state:
     st.session_state.last_image_path = None  # Store last image path if needed outside chat
 
+
 # --- Display Chat History ---
 st.subheader("📜 Conversation")
 chat_container = st.container(height=500)
 with chat_container:
     history_to_display = st.session_state.chat_history[-MAX_CHAT_HISTORY:]
-    for chat in history_to_display:  # Display oldest first within the visible window
+    for chat in history_to_display:
         with st.chat_message("user", avatar="👤"):
-            st.markdown(f"{chat['query']}")  # Display query
+            st.markdown(f"{chat['query']}")
         
         with st.chat_message("assistant", avatar="🤖"):
             response_content = chat['response']
             
-            # --- Handle Prefixed Responses ---
             if response_content.startswith("IMAGE_PATH::"):
                 img_path = response_content.split("::", 1)[1]
-                 # Debug output
-                st.write(f"Image path received: {img_path}")
-                st.write(f"File exists: {os.path.exists(img_path)}")
+                st.write(f"Debug - Image path: {img_path}")
+                st.write(f"Debug - File exists: {os.path.exists(img_path)}")
+                
                 if os.path.exists(img_path):
-                   try:
-                       # Display image 
-                       st.image(img_path, caption="Generated Image", use_column_width=True)
-                       # Download button
-                        with open(img_path, "rb") as f:
+                    try:
+                        # Display image
+                        st.image(img_path, caption="Generated Image", use_column_width=True)
+                        
+                        # Add download button
+                        with open(img_path, "rb") as img_file:
+                            img_data = img_file.read()
                             st.download_button(
-                            label="Download Image",
-                            data=f,
-                            file_name=os.path.basename(img_path),
-                            mime="image/png"
+                                label="Download Image",
+                                data=img_data,
+                                file_name=os.path.basename(img_path),
+                                mime="image/png"
                             )
-
                     except Exception as e:
-                        st.error(f"Failed to display image: {str(e)}")
-            
+                        st.error(f"Error displaying image: {str(e)}")
                 else:
-                    st.error(f"Image file not found at: {img_path}")
-               
+                    st.error("Generated image file not found")
+            
             elif response_content.startswith("PPT_PATH::"):
                 ppt_path = response_content.split("::", 1)[1]
-                st.success(f"PowerPoint generated: `{os.path.basename(ppt_path)}`. Use download button below.")
-                st.session_state.last_ppt_path = ppt_path  # Store path for button
+                st.success(f"PowerPoint generated: {os.path.basename(ppt_path)}")
+                st.session_state.last_ppt_path = ppt_path
             
             elif response_content.startswith("ERROR::"):
                 st.error(response_content.split("::", 1)[1])
             
             else:
-                st.markdown(response_content)  # Display standard text response
+                st.markdown(response_content)
 
 query = st.chat_input("How can I help you? Ask me anything that is ethical...")
 
