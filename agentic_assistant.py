@@ -308,7 +308,7 @@ class AgenticAssistant:
             results = self.vector_db.search(topic, k=3)
             if results:
                 return topic + "\n\nRelevant Context:\n" + "\n\n".join(
-                    doc.page_content for doc in results if hasattr(doc, 'page_content')
+                    doc.page_content for doc in results if hasattr(doc, 'page_content'))
         except Exception as e:
             print(f"--- WARNING: Context retrieval failed: {str(e)} ---")
         return topic
