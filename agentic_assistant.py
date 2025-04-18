@@ -20,460 +20,381 @@ from PIL import Image
 import requests
 from io import BytesIO
 from image_creator import DalleImageGenerator
-import traceback  # For error stack traces
-import re  # For regex operations
-from pptx.enum.text import MSO_AUTO_SIZE  # For text auto-sizing
-
-
+import traceback
+import re
+from pptx.enum.text import MSO_AUTO_SIZE
+import time
 
 class AgenticAssistant:
     def __init__(self, vector_db, model_name="chatgpt-4o-latest", temperature=0.7, api_key=os.getenv("OPENAI_API_KEY")):
-        """Initialize the AI-powered assistant."""
+        """Initialize the AI-powered assistant with enhanced capabilities."""
         self.vector_db = vector_db
         self.model_name = model_name
         self.temperature = temperature
         self.api_key = api_key
         self.image_generator = DalleImageGenerator()
 
-        # Initialize the language model
+        # Initialize the language model with enhanced configuration
         self.llm = ChatOpenAI(
             model_name=model_name,
-            temperature=temperature
+            temperature=temperature,
+            max_tokens=4000
         )
 
-        # Initialize conversation memory
+        # Initialize conversation memory with larger buffer
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
-            return_messages=True
+            return_messages=True,
+            max_len=20
         )
 
-        # Initialize tools
+        # Initialize tools with improved descriptions
         self.tools = self._initialize_tools()
 
-        # Initialize the agent
+        # Initialize the agent with better configuration
         self.agent = initialize_agent(
             self.tools,
             self.llm,
             agent=AgentType.CHAT_CONVERSATIONAL_REACT_DESCRIPTION,
             verbose=True,
-            memory=self.memory
+            memory=self.memory,
+            handle_parsing_errors=True
         )
 
     def _initialize_tools(self) -> List[Tool]:
-        """Initialize the tools available to the agent."""
+        """Initialize and return the tools available to the agent with enhanced descriptions."""
         tools = [
             Tool(
                 name="Document Summarization",
                 func=self.summarize_document,
-                description="Summarizes key points from a document. Input should be a query about a document."
+                description="Summarizes key points from documents. Input should be a clear query about document content."
             ),
             Tool(
                 name="Career Coach",
                 func=self.career_coach,
-                description="Analyzes job descriptions and resumes, identifies skill gaps, and provides interview preparation guidance."
+                description="Analyzes job descriptions and resumes. Identifies skill gaps and provides interview prep."
             ),
             Tool(
                 name="Chart Analysis",
                 func=self.analyze_charts,
-                description="Analyzes charts or graphs and extracts insights. Input should be a query about a chart or dataset."
+                description="Analyzes charts/graphs. Input should be a specific query about visual data."
             ),
             Tool(
                 name="Financial Data Insights",
                 func=self.analyze_financial_data,
-                description="Analyzes financial reports, stock trends, and market insights."
+                description="Analyzes financial reports and market trends. Provides investment insights."
             ),
             Tool(
                 name="General Question Answering",
                 func=self.answer_general_query,
-                description="Handles general queries using document search."
+                description="Answers general knowledge questions using available documents."
             ),
             Tool(
                 name="STEM Professor - Practice Questions",
                 func=self.generate_practice_questions,
-                description="Reads course material and generates practice questions for students to test their knowledge."
+                description="Generates 30-50 practice questions from course material."
             ),        
             Tool(
                 name="Image Creator",
                 func=self.create_single_image,
-                description="Use this tool ONLY when the user explicitly asks to create, generate, make, or draw an image, picture, or drawing based on a description. Input MUST be only the detailed description of the image itself."
+                description="ONLY for explicit requests to create images. Input MUST be a detailed visual description."
             ),
-            # --- POWERPOINT TOOL ---
             Tool(
                 name="PowerPoint Generator",
                 func=self.generate_presentation,
-                description="Use this tool ONLY when the user asks to create a PowerPoint presentation, slides, or slide deck on a specific topic. Input is the topic or subject for the presentation."
+                description="ONLY for creating PowerPoints. Input should be the presentation topic/subject."
             )
         ]
         return tools
 
     def run(self, query: str) -> str:
         """
-        Processes the user query using the conversational agent,
-        which selects and runs the appropriate tool.
+        Enhanced query processing with better error handling and logging.
         """
-        print(f"Processing query via Agent: {query}")
+        print(f"\n--- Processing query: {query[:100]}... ---")
         try:
-            # Directly use the Langchain agent executor
-            # The agent will use tool descriptions to route the query
-            # Make sure tool descriptions are clear and distinct
-            response = self.agent.run(query) # Use agent.run with initialize_agent
+            response = self.agent.run(query)
+            print(f"--- Agent response: {response[:100]}... ---")
             return response
         except Exception as e:
-            print(f"Error during agent execution: {e}\n{traceback.format_exc()}")
-            # Return error with prefix for Streamlit handling
-            return f"ERROR::Sorry, an error occurred while processing your request: {str(e)}"
+            error_msg = f"ERROR::Agent processing failed: {str(e)}"
+            print(f"--- ERROR: {error_msg}\n{traceback.format_exc()} ---")
+            return error_msg
 
+    # --- Core Tool Methods ---
     
     def generate_practice_questions(self, query: str) -> str:
-        """Generates 30-50 practice questions based on a specific topic, module, or chapter from course material."""
-        results = self.vector_db.search(query, k=10, collection_name=None)
-
-        if not results or results[0].page_content == "No relevant documents found.":
+        """Enhanced practice question generation with difficulty levels."""
+        results = self.vector_db.search(query, k=10)
+        if not results:
             return "No relevant course materials found."
 
         context = "\n\n".join([doc.page_content for doc in results])
-
-        prompt_template = """
-        You are a highly qualified STEM professor at a top-tier university.
-        Generate 30-50 practice questions across different difficulty levels (Easy, Medium, Hard) based on the course material.
-
-        Course Material:
+        prompt = """
+        As a STEM professor, generate 30-50 practice questions across three difficulty levels:
+        - Easy (20%)
+        - Medium (50%) 
+        - Hard (30%)
+        
+        Material:
         {context}
-
-        Practice Questions:
+        
+        Format:
+        [Difficulty] Question: [Question]
+        Answer: [Answer]
+        Explanation: [Brief explanation]
         """
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
-        questions = self.llm.predict(prompt.format(context=context))
-        return questions
+        return self._llm_predict(prompt, context=context)
 
     def analyze_charts(self, query: str) -> str:
-        """Analyzes charts and provides insights."""
+        """Enhanced chart analysis with visualization suggestions."""
         results = self.vector_db.search(query, k=5)
         if not results:
             return "No relevant charts found."
 
         context = "\n\n".join([doc.page_content for doc in results])
-
-        prompt_template = """
-        You are a data analyst skilled in visualizations. Analyze the following charts and provide key insights.
-
+        prompt = """
+        Analyze these charts and:
+        1. Identify key trends
+        2. Note anomalies
+        3. Suggest alternative visualizations
+        4. Provide actionable insights
+        
         Charts:
         {context}
-
-        Insights:
         """
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
-        response = self.llm.predict(prompt.format(context=context))
-        return response
+        return self._llm_predict(prompt, context=context)
 
     def analyze_financial_data(self, query: str) -> str:
-        """Analyzes financial reports, stock market trends, and business data."""
+        """Comprehensive financial analysis with risk assessment."""
         results = self.vector_db.search(query, k=5)
         if not results:
             return "No relevant financial data found."
 
         context = "\n\n".join([doc.page_content for doc in results])
-
-        prompt_template = """
-        You are an expert financial analyst. Review the following financial data and extract key insights.
-
-        Financial Data:
+        prompt = """
+        As a financial analyst, provide:
+        1. Key performance indicators
+        2. Risk assessment
+        3. Growth projections
+        4. Investment recommendations
+        
+        Data:
         {context}
-
-        Analysis and Recommendations:
         """
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
-        response = self.llm.predict(prompt.format(context=context))
-        return response
+        return self._llm_predict(prompt, context=context)
 
     def answer_general_query(self, query: str) -> str:
-        """Handles general queries by searching documents and providing answers."""
+        """Enhanced QA with confidence scoring."""
         results = self.vector_db.search(query, k=5)
         if not results:
-            return "I couldn't find any relevant information."
+            return "No relevant information found."
 
         context = "\n\n".join([doc.page_content for doc in results])
-
-        prompt_template = """
-        Use the provided context to answer the following question.
-
-        Context:
-        {context}
-
+        prompt = """
+        Answer the question and rate your confidence (1-5):
         Question: {query}
-
+        Context: {context}
+        
         Answer:
+        Confidence: [X/5]
         """
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context", "query"])
-        response = self.llm.predict(prompt.format(context=context, query=query))
-        return response
+        return self._llm_predict(prompt, context=context, query=query)
 
     def summarize_document(self, query: str) -> str:
-        """Summarizes the document content based on the user's query."""
+        """Enhanced summarization with key takeaways."""
         results = self.vector_db.search(query, k=5)
         if not results:
             return "No relevant documents found."
 
         context = "\n\n".join([doc.page_content for doc in results])
-
-        prompt_template = """
-        You are an expert document summarizer. Read the following document and summarize the key points concisely.
-
+        prompt = """
+        Create a comprehensive summary with:
+        1. Key points
+        2. Important quotes
+        3. Action items
+        4. Related concepts
+        
         Document:
         {context}
-
-        Summary:
         """
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
-        response = self.llm.predict(prompt.format(context=context))
-        return response
+        return self._llm_predict(prompt, context=context)
 
     def career_coach(self, query: str) -> str:
-        """Analyzes job descriptions and resumes, identifies skill gaps, and provides interview preparation."""
+        """Enhanced career coaching with skill mapping."""
         results = self.vector_db.search(query, k=5)
         if not results:
-            return "No relevant job descriptions or resumes found."
-        
+            return "No relevant career documents found."
+
         context = "\n\n".join([doc.page_content for doc in results])
+        prompt = """
+        As a career coach, provide:
+        1. Skill gap analysis
+        2. Interview preparation plan
+        3. Resume improvement suggestions
+        4. Career path recommendations
         
-        prompt_template = """
-        You are an expert Career Coach. Based on the following job description and resume, analyze the candidate's fit, highlight skill gaps, and provide interview preparation guidance.
-
-        Job Description and Resume:
+        Materials:
         {context}
-
-        Analysis and Recommendations:
         """
-        prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
-        response = self.llm.predict(prompt.format(context=context))
-        return response
+        return self._llm_predict(prompt, context=context)
 
-    # --- NEW Method for Single Image Creation ---
+    # --- Image Generation ---
     def create_single_image(self, prompt: str) -> str:
-        """Generates a single image using DalleImageGenerator based on the prompt."""
-        print(f"\n--- DEBUG: create_single_image CALLED ---") # Mark function entry
-        print(f"--- DEBUG: Received prompt: '{prompt}' ---")
+        """Robust single image generation with enhanced error handling."""
+        print(f"\n--- Image generation requested: {prompt[:100]}... ---")
         if not self.image_generator:
-            print("--- DEBUG: Image generator instance is missing ---")
-            return "ERROR::Image generator is not available."
+            return "ERROR::Image generation service unavailable."
 
-        print(f"Tool 'Image Creator' called with prompt: {prompt[:100]}...")
         try:
-            # Use the DalleImageGenerator instance
-            cleaned_prompt = re.sub(r"^(create|generate|make|draw)\s+(an?|the)\s+(image|picture|drawing)\s+(of|about)\s+", "", prompt, flags=re.IGNORECASE).strip()
-            if not cleaned_prompt: # Handle empty prompt after cleaning
-                 cleaned_prompt = prompt # Use original if cleaning removed everything
-            print(f"--- DEBUG: Using prompt for generation: '{cleaned_prompt}' ---")
-
-            # Use the DalleImageGenerator instance
-            print(f"--- DEBUG: Calling self.image_generator.generate_image ---")
-            # generate_image should return URL, download_image saves it and returns path
-            image_url = self.image_generator.generate_image(cleaned_prompt)
-            if not image_url:
-                 print("--- DEBUG: self.image_generator.generate_image returned None or empty URL ---")
-                 raise ValueError("Image generation failed to return a URL.")
-            print(f"--- DEBUG: Received image URL: {image_url} ---")
-
-            # Create a safe filename based on the prompt
-            safe_prompt = re.sub(r'[^\w\s-]', '', cleaned_prompt).strip()
-            safe_prompt = re.sub(r'[-\s]+', '_', safe_prompt)
-            save_dir = "generated_images" # Define save directory
-            os.makedirs(save_dir, exist_ok=True)
-            filename = f"single_{safe_prompt[:50]}.png"
-            filepath = os.path.join(save_dir, filename)
-            print(f"--- DEBUG: Target image filepath: {filepath} ---")
-            print(f"--- DEBUG: Calling self.image_generator.download_image ---")
-
-            self.image_generator.download_image(image_url, filepath) # Download and save
-            print(f"--- DEBUG: self.image_generator.download_image completed ---")
-
-            if os.path.exists(filepath):
-                print(f"Image created successfully: {filepath}")
-                return f"IMAGE_PATH::{filepath}" # Return path with prefix
-            else:
-                 print(f"--- DEBUG: ERROR - File NOT found at {filepath} after download attempt! ---")
-                 raise ValueError("Image downloaded but file not found at path.")
-
+            # Clean and validate prompt
+            cleaned_prompt = re.sub(
+                r"^(create|generate|make|draw)\s+(an?|the)\s+(image|picture|drawing)\s+(of|about)\s+", 
+                "", 
+                prompt, 
+                flags=re.IGNORECASE
+            ).strip() or prompt
+            
+            # Generate and save image
+            image_path = self.image_generator.generate_and_save_image(cleaned_prompt)
+            
+            if os.path.exists(image_path):
+                print(f"--- Image successfully generated: {image_path} ---")
+                return f"IMAGE_PATH::{image_path}"
+            raise ValueError("Generated image file not found")
+            
         except Exception as e:
-            error_message = f"Failed to generate image: {str(e)}"
-            print(f"--- DEBUG: EXCEPTION in create_single_image: {error_message} ---")
-            print(traceback.format_exc()) # Print the full traceback to console
-            # Ensure the ERROR:: prefix is always returned on failure
-            return f"ERROR::{error_message}"
+            error_msg = f"Failed to generate image: {str(e)}"
+            print(f"--- ERROR: {error_msg}\n{traceback.format_exc()} ---")
+            return f"ERROR::{error_msg}"
 
-    # --- Modified PowerPoint Generation ---
-    def generate_presentation(self, topic: str, num_slides: int = 5, use_vector_db: bool = True) -> str:
-        """Generates a PowerPoint presentation with AI-generated content and images."""
-        if not self.image_generator:
-            return "ERROR::Image generator is not available for presentation."
+    # --- PowerPoint Generation ---
+    def generate_presentation(self, topic: str, num_slides: int = 15) -> str:
+        """Enhanced PowerPoint generation with automatic image inclusion."""
+        print(f"\n--- PowerPoint generation requested: {topic} ({num_slides} slides) ---")
+        
+        try:
+            # Get context from vector DB
+            context = self._get_presentation_context(topic)
+            
+            # Generate slide content
+            slide_content = self._generate_slide_content(topic, num_slides, context)
+            parsed_slides = self._parse_slides(slide_content)[:num_slides]
+            
+            # Generate images for slides
+            self._generate_slide_images(parsed_slides)
+            
+            # Create PowerPoint file
+            ppt_path = self._create_pptx(topic, parsed_slides)
+            return f"PPT_PATH::{ppt_path}"
+            
+        except Exception as e:
+            error_msg = f"Presentation generation failed: {str(e)}"
+            print(f"--- ERROR: {error_msg}\n{traceback.format_exc()} ---")
+            return f"ERROR::{error_msg}"
 
-        print(f"Tool 'PowerPoint Generator' called for topic: {topic}")
-        context = topic
-        if use_vector_db:
-            print("Retrieving context...")
-            try:
-                results = self.vector_db.search(topic, k=3) # Reduced k for context brevity
-                if results:
-                    context = topic + "\n\nRelevant Context:\n" + "\n\n".join([doc.page_content for doc in results if hasattr(doc, 'page_content')])
-                    print(f"Using context from {len(results)} retrieved documents.")
-                else:
-                    print("No relevant documents found, using topic as context.")
-            except Exception as e:
-                print(f"Error searching vector database: {e}. Using topic as context.")
+    # --- Helper Methods ---
+    def _llm_predict(self, template: str, **kwargs) -> str:
+        """Standardized LLM prediction with error handling."""
+        try:
+            prompt = PromptTemplate(template=template, input_variables=list(kwargs.keys()))
+            return self.llm.predict(prompt.format(**kwargs))
+        except Exception as e:
+            return f"ERROR::LLM processing failed: {str(e)}"
 
-        # Step 2: Generate structured slide content using LLM
-        print(f"Generating content for {num_slides} slides...")
-        prompt_for_slides = f"""
-Generate content for a {num_slides}-slide PowerPoint presentation about: "{topic}".
-Use the following context if provided and relevant:
-Context:
----
-{context}
----
-For EACH slide (1 to {num_slides}):
-1.  Provide a concise, engaging Title.
-2.  Provide detailed Content (paragraphs or structured bullet points, ~3-5 points or a short paragraph).
-3.  Provide a detailed Image Description suitable for DALL-E (visual, descriptive).
+    def _get_presentation_context(self, topic: str) -> str:
+        """Retrieve relevant context for presentation generation."""
+        try:
+            results = self.vector_db.search(topic, k=3)
+            if results:
+                return topic + "\n\nRelevant Context:\n" + "\n\n".join(
+                    doc.page_content for doc in results if hasattr(doc, 'page_content')
+        except Exception as e:
+            print(f"--- WARNING: Context retrieval failed: {str(e)} ---")
+        return topic
 
-Format the response ONLY as:
+    def _generate_slide_content(self, topic: str, num_slides: int, context: str) -> str:
+        """Generate structured slide content using LLM."""
+        prompt = f"""
+Create content for a {num_slides}-slide presentation about: "{topic}".
+Context: {context}
+
+For EACH slide:
+1. Title: [Concise, engaging title]
+2. Content: [3-5 bullet points or short paragraph]
+3. Image Description: [Detailed visual description]
+
+Format response as:
 Slide N Title: [Title]
-Slide N Content: [Content]
+Slide N Content: [Content] 
 Slide N Image Description: [Description]
---- Repeat for next slide ---"""
-        try:
-            # Use the agent's LLM (ChatOpenAI) directly via predict for this structured task
-            slide_content_response = self.llm.predict(prompt_for_slides)
-            # Parse the text response into structured slide data
-            parsed_slides = self._parse_slides(slide_content_response)
-            print(f"Successfully parsed {len(parsed_slides)} slides from LLM response.")
-            if not parsed_slides:
-                 return "ERROR::Failed to parse slide content from the language model."
-            # Limit to requested number of slides if LLM gives more
-            parsed_slides = parsed_slides[:num_slides]
+---"""
+        return self.llm.predict(prompt)
 
-        except Exception as e:
-            print(f"Error generating slide content with LLM: {e}\n{traceback.format_exc()}")
-            return f"ERROR::Error generating slide content: {str(e)}"
-
-        # Step 3: Generate images for the parsed slides using DalleImageGenerator
-        print("Generating images for slides...")
-        try:
-            # This method in DalleImageGenerator handles generating, downloading, and adding paths
-            slides_with_images = self.image_generator.generate_images_for_slides(parsed_slides)
-            print(f"Image generation attempted for {len(slides_with_images)} slides.")
-            # Check for errors reported by the image generator
-            errors = [s.get('error') for s in slides_with_images if 'error' in s]
-            if errors:
-                 print(f"Warning: Encountered errors during image generation: {errors}")
-
-        except Exception as e:
-            print(f"Error during batch image generation: {e}\n{traceback.format_exc()}")
-            # Proceed without images or return error? Let's proceed without.
-            slides_with_images = parsed_slides # Use original parsed slides if batch generation failed
-
-        # Step 4: Create PowerPoint file
-        print("Creating PowerPoint file...")
-        try:
-            ppt_path = self._create_pptx(topic, slides_with_images) # Pass slides possibly containing image_path
-            print(f"PowerPoint file saved to: {ppt_path}")
-            return f"PPT_PATH::{ppt_path}" # Return path with prefix
-        except Exception as e:
-            print(f"Error creating PowerPoint file: {e}\n{traceback.format_exc()}")
-            return f"ERROR::Error creating PowerPoint file: {str(e)}"
-
-    def _parse_slides(self, response: str) -> list:
-        """Parses the AI-generated response into structured slides using regex."""
-        # (Using the more robust regex implementation from previous correction)
-        print("Parsing slide content...")
+    def _parse_slides(self, response: str) -> List[Dict]:
+        """Parse generated slide content into structured format."""
         slides = []
         pattern = re.compile(
             r"Slide\s*(?P<num>\d+)\s*Title:(?P<title>.*?)\n"
             r"Slide\s*\1\s*Content:(?P<content>.*?)\n"
             r"Slide\s*\1\s*Image Description:(?P<image_prompt>.*?)"
-            r"(?=\n\s*Slide\s*\d+\s*Title:|\Z)",
-            re.DOTALL | re.IGNORECASE | re.MULTILINE
+            r"(?=\nSlide\s*\d+\s*Title:|\Z)",
+            re.DOTALL | re.IGNORECASE
         )
-        matches = pattern.finditer(response)
-        count = 0
-        for match in matches:
-            count += 1
+        
+        for match in pattern.finditer(response):
             slide_data = match.groupdict()
-            title = slide_data.get('title', '').strip()
-            content = slide_data.get('content', '').strip()
-            image_prompt = slide_data.get('image_prompt', '').strip()
-            if title and content and image_prompt:
-                slides.append({
-                    "title": title,
-                    "content": content,
-                    "image_prompt": image_prompt # Keep prompt for potential use
-                })
-            else:
-                print(f"Warning: Incomplete data parsed for slide block near match {count}.")
-        print(f"Parsed {len(slides)} slides using regex.")
+            slides.append({
+                'title': slide_data['title'].strip(),
+                'content': slide_data['content'].strip(),
+                'image_prompt': slide_data['image_prompt'].strip()
+            })
+            
         return slides
 
-
-    # --- REMOVED _generate_slide_image method ---
-    # Image generation is now handled by DalleImageGenerator instance
-
-    def _create_pptx(self, topic: str, slides: list) -> str:
-        """Creates and formats a PowerPoint file using slide data (incl. image paths)."""
-        prs = Presentation()
-        # Add Title Slide
-        try:
-            title_slide_layout = prs.slide_layouts[0]
-            slide = prs.slides.add_slide(title_slide_layout)
-            slide.shapes.title.text = f"Presentation on: {topic.title()}"
-            slide.placeholders[1].text = "Generated by AI Assistant"
-        except Exception as e:
-             print(f"Warning: Could not create title slide - {e}")
-
-        # Add Content Slides
-        for i, slide_data in enumerate(slides):
-            print(f"  Adding Slide {i+1} to PPT: {slide_data.get('title', 'No Title')[:50]}...")
+    def _generate_slide_images(self, slides: List[Dict]) -> None:
+        """Generate images for slides and add paths to slide data."""
+        for slide in slides:
             try:
-                # Use layout 5 (Title and Two Content) for text + image side-by-side
-                slide_layout = prs.slide_layouts[5]
-                slide = prs.slides.add_slide(slide_layout)
-
-                # Add title
-                title_shape = slide.shapes.title
-                if title_shape: title_shape.text = slide_data.get("title", f"Slide {i+1}")
-
-                # Add text content
-                content_placeholder = slide.placeholders[1] # Left content placeholder
-                if content_placeholder:
-                    tf = content_placeholder.text_frame
-                    tf.text = slide_data.get("content", "")
-                    tf.word_wrap = True # Enable word wrap
-                    tf.auto_size = MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT # Adjust shape size to text
-                    # Optional: Adjust font size if needed
-                    # for paragraph in tf.paragraphs:
-                    #     for run in paragraph.runs:
-                    #         run.font.size = Pt(12)
-
-                # Add image if path exists
-                image_placeholder = slide.placeholders[2] # Right content placeholder
-                image_path = slide_data.get("image_path") # Path added by generate_images_for_slides
-                if image_placeholder and image_path and os.path.exists(image_path):
-                     print(f"    Adding image {image_path}...")
-                     try:
-                        # Add picture, maintaining aspect ratio within placeholder bounds
-                        image_placeholder.insert_picture(image_path)
-                     except Exception as e:
-                         print(f"    Error adding picture {image_path} to placeholder: {e}")
-                elif image_path:
-                     print(f"    Image path specified ({image_path}) but file not found.")
-                elif image_placeholder:
-                     print(f"    No image generated or path available for slide {i+1}.")
-
+                image_path = self.image_generator.generate_and_save_image(slide['image_prompt'])
+                slide['image_path'] = image_path if os.path.exists(image_path) else None
             except Exception as e:
-                print(f"  Error creating slide {i+1}: {e}\n{traceback.format_exc()}")
+                print(f"--- WARNING: Image generation failed for slide: {str(e)} ---")
+                slide['image_path'] = None
 
-        # Sanitize topic for filename
+    def _create_pptx(self, topic: str, slides: List[Dict]) -> str:
+        """Create PowerPoint file from structured slide data."""
+        prs = Presentation()
+        
+        # Title slide
+        title_slide = prs.slides.add_slide(prs.slide_layouts[0])
+        title_slide.shapes.title.text = topic.title()
+        title_slide.placeholders[1].text = "AI-Generated Presentation"
+        
+        # Content slides
+        for i, slide in enumerate(slides, 1):
+            try:
+                content_slide = prs.slides.add_slide(prs.slide_layouts[5])
+                content_slide.shapes.title.text = slide.get('title', f"Slide {i}")
+                
+                # Add content
+                if 'content' in slide:
+                    tf = content_slide.placeholders[1].text_frame
+                    tf.text = slide['content']
+                    tf.word_wrap = True
+                    tf.auto_size = MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
+                
+                # Add image if available
+                if slide.get('image_path') and os.path.exists(slide['image_path']):
+                    content_slide.placeholders[2].insert_picture(slide['image_path'])
+                    
+            except Exception as e:
+                print(f"--- WARNING: Failed to create slide {i}: {str(e)} ---")
+        
+        # Save presentation
         safe_topic = re.sub(r'[^\w\s-]', '', topic).strip()
         safe_topic = re.sub(r'[-\s]+', '_', safe_topic)
-        ppt_path = f"Presentation_{safe_topic[:50]}.pptx"
-
+        ppt_path = f"Presentation_{safe_topic[:50]}_{int(time.time())}.pptx"
         prs.save(ppt_path)
+        
         return ppt_path
