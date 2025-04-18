@@ -67,41 +67,46 @@ if "chat_history" not in st.session_state:
 if "last_ppt_path" not in st.session_state:
     st.session_state.last_ppt_path = None
 if "last_image_path" not in st.session_state:
-    st.session_state.last_image_path = None # Store last image path if needed outside chat
+    st.session_state.last_image_path = None  # Store last image path if needed outside chat
 
 # --- Display Chat History ---
 st.subheader("📜 Conversation")
 chat_container = st.container(height=500)
 with chat_container:
     history_to_display = st.session_state.chat_history[-MAX_CHAT_HISTORY:]
-    for chat in history_to_display: # Display oldest first within the visible window
+    for chat in history_to_display:  # Display oldest first within the visible window
         with st.chat_message("user", avatar="👤"):
-             st.markdown(f"{chat['query']}") # Display query
+            st.markdown(f"{chat['query']}")  # Display query
+        
         with st.chat_message("assistant", avatar="🤖"):
             response_content = chat['response']
+            
             # --- Handle Prefixed Responses ---
             if response_content.startswith("IMAGE_PATH::"):
                 img_path = response_content.split("::", 1)[1]
                 if os.path.exists(img_path):
                     st.image(img_path, caption="Generated Image")
-        with open(img_path, "rb") as img_file:
-            st.download_button(
-                label="Download Image",
-                data=img_file.read(),
-                file_name=os.path.basename(img_path),
-                mime="image/png"
-            )
-        st.session_state.last_image_path = img_path
-    else:
-        st.error(f"Generated image file not found at path: {img_path}")             
+                    with open(img_path, "rb") as img_file:
+                        st.download_button(
+                            label="Download Image",
+                            data=img_file.read(),
+                            file_name=os.path.basename(img_path),
+                            mime="image/png"
+                        )
+                    st.session_state.last_image_path = img_path
+                else:
+                    st.error(f"Generated image file not found at path: {img_path}")
+            
             elif response_content.startswith("PPT_PATH::"):
                 ppt_path = response_content.split("::", 1)[1]
                 st.success(f"PowerPoint generated: `{os.path.basename(ppt_path)}`. Use download button below.")
-                st.session_state.last_ppt_path = ppt_path # Store path for button
+                st.session_state.last_ppt_path = ppt_path  # Store path for button
+            
             elif response_content.startswith("ERROR::"):
                 st.error(response_content.split("::", 1)[1])
+            
             else:
-                st.markdown(response_content) # Display standard text response
+                st.markdown(response_content)  # Display standard text response
 
 query = st.chat_input("How can I help you? Ask me anything that is ethical...")
 
@@ -150,8 +155,6 @@ elif st.session_state.chat_history and st.session_state.chat_history[-1]["respon
             st.sidebar.info(f"🔍 Using **{reasoning_level.upper()}** reasoning effort.")
 
             # 🔹 Step 3: Run the agent
-            #full_prompt = f"Context: {retrieved_context}\n\nQuestion: {query_to_process}"
-            #agent_response = agentic_assistant.run(full_prompt)
             agent_response = agentic_assistant.run(query_to_process)
 
         except Exception as e:
