@@ -83,18 +83,17 @@ with chat_container:
             if response_content.startswith("IMAGE_PATH::"):
                 img_path = response_content.split("::", 1)[1]
                 if os.path.exists(img_path):
-                st.image(img_path, caption="Generated Image")
-                st.download_button(
+                    st.image(img_path, caption="Generated Image")
+        with open(img_path, "rb") as img_file:
+            st.download_button(
                 label="Download Image",
-                data=open(img_path, "rb").read(),
+                data=img_file.read(),
                 file_name=os.path.basename(img_path),
-                mime="image/png" 
-                                ) 
-        st.session_state.last_image_path = img_path # Store path if needed
+                mime="image/png"
+            )
+        st.session_state.last_image_path = img_path
     else:
-        st.error(f"Generated image file not found at path: {img_path}")
-                else:
-                    st.error(f"Generated image file not found at path: {img_path}")
+        st.error(f"Generated image file not found at path: {img_path}")             
             elif response_content.startswith("PPT_PATH::"):
                 ppt_path = response_content.split("::", 1)[1]
                 st.success(f"PowerPoint generated: `{os.path.basename(ppt_path)}`. Use download button below.")
