@@ -84,19 +84,28 @@ with chat_container:
             # --- Handle Prefixed Responses ---
             if response_content.startswith("IMAGE_PATH::"):
                 img_path = response_content.split("::", 1)[1]
+                 # Debug output
+                st.write(f"Image path received: {img_path}")
+                st.write(f"File exists: {os.path.exists(img_path)}")
                 if os.path.exists(img_path):
-                    st.image(img_path, caption="Generated Image")
-                    with open(img_path, "rb") as img_file:
-                        st.download_button(
+                   try:
+                       # Display image 
+                       st.image(img_path, caption="Generated Image", use_column_width=True)
+                       # Download button
+                        with open(img_path, "rb") as f:
+                            st.download_button(
                             label="Download Image",
-                            data=img_file.read(),
+                            data=f,
                             file_name=os.path.basename(img_path),
                             mime="image/png"
-                        )
-                    st.session_state.last_image_path = img_path
-                else:
-                    st.error(f"Generated image file not found at path: {img_path}")
+                            )
+
+                    except Exception as e:
+                        st.error(f"Failed to display image: {str(e)}")
             
+                else:
+                    st.error(f"Image file not found at: {img_path}")
+               
             elif response_content.startswith("PPT_PATH::"):
                 ppt_path = response_content.split("::", 1)[1]
                 st.success(f"PowerPoint generated: `{os.path.basename(ppt_path)}`. Use download button below.")
