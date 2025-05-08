@@ -129,13 +129,22 @@ def retrieve_from_qdrant(query):
     )
     return "\n\n".join([f"[{res.metadata.get('collection', 'unknown')}] {res.page_content}" for res in results])
 
-def determine_reasoning_effort(query):
-    """Determine the reasoning effort level based on query complexity."""
-    if len(query.split()) < 20:  # Simple queries
-        return "low"
-    elif any(keyword in query.lower() for keyword in ["explain", "analyze", "think step by step", "evaluate", "reason", "deduce"]):  # Requires deeper reasoning
-        return "high"
-    return "medium"
+def determine_reasoning_effort_with_llm(query):
+    prompt = f"""Classify the reasoning effort required for this query as 'low', 'medium', or 'high':
+    
+    Query: "{query}"
+
+    Only output one of the three labels: low, medium, high.
+    """
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "system", "content": "You are a classifier of query complexity."},
+                  {"role": "user", "content": prompt}],
+        temperature=0,
+        max_tokens=10
+    )
+    return response.choices[0].message.content.strip().lower()
+
 
 # --- Handle New Chat Input ---
 if query:
