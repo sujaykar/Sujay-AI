@@ -133,7 +133,7 @@ def determine_reasoning_effort_with_llm(query):
     Only output one of the three labels: low, medium, high.
     """
     response = openai_client.chat.completions.create(
-        model="gpt-4o",
+        model="chatgpt-4o-latest",
         messages=[{"role": "system", "content": "You are a classifier of query complexity."},
                   {"role": "user", "content": prompt}],
         temperature=0,
