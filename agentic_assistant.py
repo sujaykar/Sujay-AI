@@ -45,7 +45,7 @@ class AgenticAssistant:
         self.memory = ConversationBufferMemory(
             memory_key="chat_history",
             return_messages=True,
-            max_len=20
+            k=20
         )
 
         # Initialize tools with improved descriptions
