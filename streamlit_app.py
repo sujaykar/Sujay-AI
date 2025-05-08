@@ -18,11 +18,7 @@ MIN_SIMILARITY = 0.72
 
 #@st.cache_resource # Cache
 
-REASONING_EFFORT = {
-    "low": {"temperature": 0.3, "max_tokens": 4096},
-    "medium": {"temperature": 0.6, "max_tokens": 8192},
-    "high": {"temperature": 0.9, "max_tokens": 16384}  # GPT-4o limit
-}
+
 
 # --- Initialize Components ---
 vector_db = VectorDatabase(embedding_model="openai")
