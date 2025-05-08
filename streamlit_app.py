@@ -31,9 +31,9 @@ openai_client = get_openai_client()
 
 
 # --- Initialize Components ---
-vector_db = VectorDatabase(embedding_model="openai")
+
 document_processor = DocumentProcessor()
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
 
 # Initialize the Agentic Assistant with GPT-4o latest model
 agentic_assistant = AgenticAssistant(vector_db, model_name="chatgpt-4o-latest", api_key=os.getenv("OPENAI_API_KEY"))
