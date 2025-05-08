@@ -17,7 +17,17 @@ MAX_TOKENS = 9200  # Adjusted for GPT-4o
 MIN_SIMILARITY = 0.72  
 
 #@st.cache_resource # Cache
+@st.cache_resource(show_spinner=False)
+def get_vector_db():
+    return VectorDatabase(embedding_model="openai")
 
+vector_db = get_vector_db()
+
+@st.cache_resource(show_spinner=False)
+def get_openai_client():
+    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+openai_client = get_openai_client()
 
 
 # --- Initialize Components ---
