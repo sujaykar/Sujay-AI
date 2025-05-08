@@ -165,7 +165,7 @@ elif st.session_state.chat_history and st.session_state.chat_history[-1]["respon
             retrieved_context = retrieve_from_qdrant(query_to_process)
 
             # 🔹 Step 2: Determine reasoning effort
-            reasoning_level = determine_reasoning_effort(query_to_process)
+            reasoning_level = determine_reasoning_effort_with_llm(query_to_process)
             st.sidebar.info(f"🔍 Using **{reasoning_level.upper()}** reasoning effort.")
 
             # 🔹 Step 3: Run the agent
