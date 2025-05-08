@@ -29,14 +29,19 @@ def get_openai_client():
 
 openai_client = get_openai_client()
 
+@st.cache_resource(show_spinner=False)
+def get_document_processor():
+    return DocumentProcessor()
 
-# --- Initialize Components ---
+document_processor = get_document_processor()
 
-document_processor = DocumentProcessor()
+@st.cache_resource(show_spinner=False)
+def get_agentic_assistant():
+    return AgenticAssistant(vector_db, model_name="chatgpt-4o-latest", api_key=os.getenv("OPENAI_API_KEY"))
+
+agentic_assistant = get_agentic_assistant()
 
 
-# Initialize the Agentic Assistant with GPT-4o latest model
-agentic_assistant = AgenticAssistant(vector_db, model_name="chatgpt-4o-latest", api_key=os.getenv("OPENAI_API_KEY"))
 
 # --- Streamlit UI ---
 st.set_page_config(
